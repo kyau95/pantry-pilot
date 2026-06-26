@@ -239,11 +239,31 @@
                 <button 
                   onclick={() => pantryStore.updatePantryQuantity(item.id, item.quantity - (item.unit === 'g' || item.unit === 'ml' ? 50 : 1))} 
                   class="qty-btn"
+                  aria-label="Decrease quantity"
                 >-</button>
-                <span class="qty-display">{item.quantity} <small>{item.unit}</small></span>
+                <input 
+                  type="number"
+                  value={item.quantity}
+                  oninput={(e) => {
+                    const target = e.target as HTMLInputElement;
+                    if (target.value === '') return;
+                    const val = parseFloat(target.value);
+                    if (!isNaN(val) && val >= 0) {
+                      pantryStore.updatePantryQuantity(item.id, val);
+                    }
+                  }}
+                  onblur={(e) => {
+                    (e.target as HTMLInputElement).value = String(item.quantity);
+                  }}
+                  class="qty-input"
+                  min="0"
+                  step="any"
+                />
+                <span class="qty-unit">{item.unit}</span>
                 <button 
                   onclick={() => pantryStore.updatePantryQuantity(item.id, item.quantity + (item.unit === 'g' || item.unit === 'ml' ? 50 : 1))} 
                   class="qty-btn"
+                  aria-label="Increase quantity"
                 >+</button>
               </div>
               <button 
@@ -561,19 +581,36 @@
     background: rgba(255, 255, 255, 0.05);
   }
 
-  .qty-display {
-    padding: 0 0.75rem;
+  .qty-input {
+    width: 45px;
+    background: transparent;
+    border: none;
+    color: var(--color-text-light);
+    font-family: inherit;
     font-size: 0.85rem;
     font-weight: 600;
-    color: var(--color-text-light);
-    min-width: 60px;
     text-align: center;
+    padding: 0;
+    -moz-appearance: textfield;
   }
 
-  .qty-display small {
+  .qty-input::-webkit-outer-spin-button,
+  .qty-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  .qty-input:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+  }
+
+  .qty-unit {
     color: var(--color-text-muted);
     font-size: 0.7rem;
-    margin-left: 2px;
+    margin-right: 0.5rem;
+    user-select: none;
   }
 
   .delete-btn {
