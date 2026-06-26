@@ -217,7 +217,37 @@
 
                 <!-- Quantity & Actions -->
                 <div class="item-actions">
-                  <span class="qty-badge">{item.quantity} {item.unit}</span>
+                  <div class="qty-adjuster">
+                    <button 
+                      onclick={() => pantryStore.updateShoppingQuantity(item.id, item.quantity - (item.unit === 'g' || item.unit === 'ml' ? 50 : 1))} 
+                      class="qty-btn"
+                      aria-label="Decrease quantity"
+                    >-</button>
+                    <input 
+                      type="number"
+                      value={item.quantity}
+                      oninput={(e) => {
+                        const target = e.target as HTMLInputElement;
+                        if (target.value === '') return;
+                        const val = parseFloat(target.value);
+                        if (!isNaN(val) && val >= 0) {
+                          pantryStore.updateShoppingQuantity(item.id, val);
+                        }
+                      }}
+                      onblur={(e) => {
+                        (e.target as HTMLInputElement).value = String(item.quantity);
+                      }}
+                      class="qty-input"
+                      min="0"
+                      step="any"
+                    />
+                    <span class="qty-unit">{item.unit}</span>
+                    <button 
+                      onclick={() => pantryStore.updateShoppingQuantity(item.id, item.quantity + (item.unit === 'g' || item.unit === 'ml' ? 50 : 1))} 
+                      class="qty-btn"
+                      aria-label="Increase quantity"
+                    >+</button>
+                  </div>
                   <button 
                     class="delete-btn" 
                     onclick={() => pantryStore.deleteShoppingItem(item.id)}
@@ -488,14 +518,64 @@
     gap: 0.75rem;
   }
 
-  .qty-badge {
-    font-size: 0.75rem;
-    padding: 2px 8px;
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--color-text-light);
+  .qty-adjuster {
+    display: flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .qty-btn {
+    background: transparent;
+    border: none;
+    color: var(--color-text-light);
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+  }
+
+  .qty-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .qty-input {
+    width: 45px;
+    background: transparent;
+    border: none;
+    color: var(--color-text-light);
+    font-family: inherit;
+    font-size: 0.85rem;
     font-weight: 600;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    text-align: center;
+    padding: 0;
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+
+  .qty-input::-webkit-outer-spin-button,
+  .qty-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  .qty-input:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+  }
+
+  .qty-unit {
+    color: var(--color-text-muted);
+    font-size: 0.7rem;
+    margin-right: 0.5rem;
+    user-select: none;
   }
 
   .delete-btn {

@@ -111,6 +111,18 @@ class TestPantryPilotBackend(unittest.TestCase):
         items = db.get_all_shopping()
         self.assertEqual(len(items), 2)
 
+        # Test updating quantity
+        db.update_shopping_qty("shop-2", 250.0)
+        items = db.get_all_shopping()
+        cheese = next(i for i in items if i["id"] == "shop-2")
+        self.assertEqual(cheese["quantity"], 250.0)
+
+        # Test updating quantity to 0 deletes the item
+        db.update_shopping_qty("shop-2", 0)
+        items = db.get_all_shopping()
+        self.assertEqual(len(items), 1)
+        self.assertTrue(all(i["id"] != "shop-2" for i in items))
+
         db.toggle_shopping_item("shop-1")
         items = db.get_all_shopping()
         basil = next(i for i in items if i["id"] == "shop-1")
@@ -119,7 +131,7 @@ class TestPantryPilotBackend(unittest.TestCase):
         db.purchase_checked_items_db()
         
         shopping_items = db.get_all_shopping()
-        self.assertEqual(len(shopping_items), 1)
+        self.assertEqual(len(shopping_items), 0)
 
         pantry_items = db.get_all_pantry()
         self.assertEqual(len(pantry_items), 1)
@@ -216,6 +228,51 @@ class TestPantryPilotBackend(unittest.TestCase):
             method="DELETE"
         )
         with urllib.request.urlopen(req_del) as resp:
+            self.assertEqual(json.loads(resp.read().decode('utf-8'))["status"], "success")
+
+        # Test adding, updating quantity, and deleting a shopping item via live API
+        shop_payload = {
+            "id": "live-shop-item",
+            "name": "Live Milk",
+            "quantity": 1.0,
+            "unit": "bottle",
+            "category": "Dairy"
+        }
+        req_shop_post = urllib.request.Request(
+            f"{server_url}/api/shopping",
+            data=json.dumps(shop_payload).encode('utf-8'),
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+        with urllib.request.urlopen(req_shop_post) as resp:
+            self.assertEqual(json.loads(resp.read().decode('utf-8'))["status"], "success")
+
+        # Update shopping quantity to 5
+        qty_payload = {
+            "quantity": 5.0
+        }
+        req_shop_put = urllib.request.Request(
+            f"{server_url}/api/shopping/live-shop-item",
+            data=json.dumps(qty_payload).encode('utf-8'),
+            headers={"Content-Type": "application/json"},
+            method="PUT"
+        )
+        with urllib.request.urlopen(req_shop_put) as resp:
+            self.assertEqual(json.loads(resp.read().decode('utf-8'))["status"], "success")
+
+        # Verify change in get_all
+        req_get_shop = urllib.request.Request(f"{server_url}/api/shopping", method="GET")
+        with urllib.request.urlopen(req_get_shop) as resp:
+            shop_items = json.loads(resp.read().decode('utf-8'))
+            live_item = next(i for i in shop_items if i["id"] == "live-shop-item")
+            self.assertEqual(live_item["quantity"], 5.0)
+
+        # Delete the shopping item
+        req_shop_del = urllib.request.Request(
+            f"{server_url}/api/shopping/live-shop-item",
+            method="DELETE"
+        )
+        with urllib.request.urlopen(req_shop_del) as resp:
             self.assertEqual(json.loads(resp.read().decode('utf-8'))["status"], "success")
 
 if __name__ == '__main__':

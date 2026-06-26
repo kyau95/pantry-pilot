@@ -14,6 +14,7 @@ from db import (
     add_or_update_shopping_item,
     toggle_shopping_item,
     delete_shopping_item,
+    update_shopping_qty,
     purchase_checked_items_db,
     get_all_recipes,
     add_custom_recipe_db,
@@ -215,6 +216,14 @@ def toggle_shopping(item_id: str):
 def delete_shopping(item_id: str):
     try:
         delete_shopping_item(item_id)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/shopping/{item_id}")
+def update_shopping(item_id: str, payload: QtyUpdatePayload):
+    try:
+        update_shopping_qty(item_id, payload.quantity)
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

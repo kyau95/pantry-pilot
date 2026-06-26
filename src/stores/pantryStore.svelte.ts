@@ -299,6 +299,22 @@ class PantryStore {
     }
   }
 
+  updateShoppingQuantity(id: string, newQuantity: number) {
+    const item = this.shoppingList.find(i => i.id === id);
+    if (item) {
+      const qty = Math.max(0, newQuantity);
+      item.quantity = qty;
+      if (qty === 0) {
+        this.shoppingList = this.shoppingList.filter(i => i.id !== id);
+        this.saveLocal();
+        this.apiCall(`/shopping/${id}`, 'DELETE');
+      } else {
+        this.saveLocal();
+        this.apiCall(`/shopping/${id}`, 'PUT', { quantity: qty });
+      }
+    }
+  }
+
   deleteShoppingItem(id: string) {
     this.shoppingList = this.shoppingList.filter(i => i.id !== id);
     this.saveLocal();

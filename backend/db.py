@@ -480,6 +480,19 @@ def delete_shopping_item(item_id):
     conn.commit()
     conn.close()
 
+def update_shopping_qty(item_id, quantity):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    qty = max(0.0, quantity)
+    if qty == 0.0:
+        cursor.execute("DELETE FROM shopping_items WHERE id = ?", (item_id,))
+    else:
+        cursor.execute("UPDATE shopping_items SET quantity = ? WHERE id = ?", (qty, item_id))
+        
+    conn.commit()
+    conn.close()
+
 def purchase_checked_items_db():
     conn = get_db_connection()
     cursor = conn.cursor()
