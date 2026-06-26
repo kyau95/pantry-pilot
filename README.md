@@ -27,7 +27,7 @@ Pantry Pilot solves these problems by creating a unified, visual, and agentic as
 
 ## 🏗️ 3. System Architecture & Diagram
 
-Pantry Pilot uses a decoupled architecture where the Svelte client handles the reactive presentation and local persistence, and the FastAPI service runs the Google ADK agent.
+Pantry Pilot uses a decoupled architecture where the Svelte client handles reactive presentation and local persistence (optimistic UI), while the FastAPI backend provides services for the Google ADK agent and a persistent SQLite database.
 
 ```mermaid
 graph TD
@@ -43,8 +43,11 @@ graph TD
         ShoppingList <-->|Sync State| Store
     end
 
-    subgraph Backend [FastAPI Server / WSL]
+    subgraph Backend [FastAPI Server / SQLite]
         CameraScanner -->|Uploads Image| API[FastAPI API Gateway]
+        Store <-->|Sync DB| API
+        API <-->|Query / Write| DB[(SQLite Database - pantry_pilot.db)]
+        
         API -->|Dispatches prompt| Agent[Google ADK vision_scanner Agent]
         Agent -->|Invokes| Tool[analyze_grocery_image Tool]
         Tool -->|Parses via Vision| Gemini[Gemini LLM API]

@@ -4,6 +4,14 @@ This document outlines the step-by-step setup, run instructions, and compile ver
 
 ---
 
+## 💾 SQLite Database Persistence
+The application includes a serverless, local SQLite database backend (`backend/pantry_pilot.db`).
+* **Zero-config**: SQLite runs natively through Python's standard `sqlite3` library. No database server installations or setups are required.
+* **Initialization**: The database file is automatically created and populated with schema tables on backend server startup.
+* **Offline Resilience**: The client uses optimistic synchronization. If the backend SQLite server is down, the frontend store gracefully falls back to using local browser cache (`localStorage`) automatically.
+
+---
+
 ## 🛠️ Option A: Unified Quick Start (Recommended)
 You can launch both the Svelte development server and the FastAPI backend concurrently using our root-level launch scripts.
 

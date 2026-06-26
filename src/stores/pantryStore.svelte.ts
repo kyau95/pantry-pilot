@@ -20,9 +20,12 @@ export interface ShoppingItem {
   recipeName?: string;
 }
 
+const API_URL = 'http://localhost:8000/api';
+
 class PantryStore {
   pantryItems = $state<PantryItem[]>([]);
   shoppingList = $state<ShoppingItem[]>([]);
+  isSynced = $state(false);
 
   constructor() {
     // Only load if window is defined (browser environment)
@@ -31,14 +34,14 @@ class PantryStore {
     }
   }
 
-  load() {
+  async load() {
+    // 1. Load optimistic local state from localStorage first (offline-first)
     try {
       const savedPantry = localStorage.getItem('pp_pantry');
       const savedShopping = localStorage.getItem('pp_shopping');
       
       if (savedPantry) {
         const items = JSON.parse(savedPantry);
-        // Migrate legacy items that are missing useByDate
         this.pantryItems = items.map((item: any) => {
           if (!item.useByDate) {
             const date = new Date(item.createdAt || new Date());
@@ -48,7 +51,7 @@ class PantryStore {
           return item;
         });
       } else {
-        // Seed default pantry items for initial load
+        // Seed default pantry items for initial load if nothing is saved
         const now = new Date();
         const getFutureDate = (days: number) => {
           const d = new Date(now);
@@ -61,7 +64,7 @@ class PantryStore {
           { id: '3', name: 'Butter', quantity: 4, unit: 'tbsp', category: 'Dairy', createdAt: now.toISOString(), useByDate: getFutureDate(14) },
           { id: '4', name: 'Tomato', quantity: 2, unit: 'pieces', category: 'Vegetables', createdAt: now.toISOString(), useByDate: getFutureDate(2) }
         ];
-        this.save();
+        this.saveLocal();
       }
       
       if (savedShopping) {
@@ -72,14 +75,54 @@ class PantryStore {
     } catch (e) {
       console.error('Failed to load pantry data from localStorage', e);
     }
+
+    // 2. Asynchronously sync with SQLite database backend
+    try {
+      console.log('[SQLite Store] Probing backend for SQLite database synchronization...');
+      
+      const pantryRes = await fetch(`${API_URL}/pantry`);
+      if (!pantryRes.ok) throw new Error('Failed to fetch pantry from backend');
+      const dbPantry = await pantryRes.json();
+      
+      const shoppingRes = await fetch(`${API_URL}/shopping`);
+      if (!shoppingRes.ok) throw new Error('Failed to fetch shopping list from backend');
+      const dbShopping = await shoppingRes.json();
+      
+      // Update state with backend data
+      this.pantryItems = dbPantry;
+      this.shoppingList = dbShopping;
+      this.isSynced = true;
+      this.saveLocal();
+      console.log('[SQLite Store] Sync completed successfully. Loaded data from SQLite.');
+    } catch (err) {
+      console.warn('[SQLite Store Sync Offline] FastAPI SQLite backend offline or unreachable. Using localStorage.', err);
+      this.isSynced = false;
+    }
   }
 
-  save() {
+  saveLocal() {
     try {
       localStorage.setItem('pp_pantry', JSON.stringify(this.pantryItems));
       localStorage.setItem('pp_shopping', JSON.stringify(this.shoppingList));
     } catch (e) {
       console.error('Failed to save pantry data to localStorage', e);
+    }
+  }
+
+  // Helper to dispatch async background API requests
+  private async apiCall(path: string, method: string, body?: any) {
+    try {
+      const options: RequestInit = {
+        method,
+        headers: body ? { 'Content-Type': 'application/json' } : undefined,
+        body: body ? JSON.stringify(body) : undefined
+      };
+      const res = await fetch(`${API_URL}${path}`, options);
+      if (!res.ok) {
+        console.warn(`[SQLite Store Sync] API call to ${path} failed: ${res.statusText}`);
+      }
+    } catch (err) {
+      console.warn(`[SQLite Store Sync Offline] Failed to sync ${method} ${path} to backend SQLite. App remains functional locally.`, err);
     }
   }
 
@@ -99,15 +142,19 @@ class PantryStore {
       expiry = d.toISOString();
     }
 
+    let itemId = Math.random().toString(36).substring(2, 9);
+
     if (existingIndex > -1) {
       this.pantryItems[existingIndex].quantity += quantity;
       // Keep the earlier expiration date
       if (new Date(expiry) < new Date(this.pantryItems[existingIndex].useByDate)) {
         this.pantryItems[existingIndex].useByDate = expiry;
       }
+      itemId = this.pantryItems[existingIndex].id;
+      expiry = this.pantryItems[existingIndex].useByDate;
     } else {
       this.pantryItems.push({
-        id: Math.random().toString(36).substring(2, 9),
+        id: itemId,
         name: name.trim(),
         quantity,
         unit: unit.trim(),
@@ -116,62 +163,42 @@ class PantryStore {
         useByDate: expiry
       });
     }
-    this.save();
+    
+    this.saveLocal();
+    
+    // Sync to SQLite in the background
+    this.apiCall('/pantry', 'POST', {
+      id: itemId,
+      name: name.trim(),
+      quantity,
+      unit: unit.trim(),
+      category: category.trim(),
+      useByDate: expiry
+    });
   }
 
   updatePantryQuantity(id: string, newQuantity: number) {
     const item = this.pantryItems.find(i => i.id === id);
     if (item) {
-      item.quantity = Math.max(0, newQuantity);
-      if (item.quantity === 0) {
+      const qty = Math.max(0, newQuantity);
+      item.quantity = qty;
+      if (qty === 0) {
         this.pantryItems = this.pantryItems.filter(i => i.id !== id);
+        this.saveLocal();
+        this.apiCall(`/pantry/${id}`, 'DELETE');
+      } else {
+        this.saveLocal();
+        this.apiCall(`/pantry/${id}`, 'PUT', { quantity: qty });
       }
-      this.save();
     }
   }
 
   deletePantryItem(id: string) {
     this.pantryItems = this.pantryItems.filter(i => i.id !== id);
-    this.save();
-  }
-
-  // --- Shopping List Actions ---
-  addShoppingItem(name: string, quantity: number, unit: string, category: string, recipeName?: string) {
-    if (!name.trim()) return;
-
-    const existingIndex = this.shoppingList.findIndex(
-      i => i.name.toLowerCase() === name.trim().toLowerCase() && i.unit.toLowerCase() === unit.trim().toLowerCase()
-    );
-
-    if (existingIndex > -1) {
-      this.shoppingList[existingIndex].quantity += quantity;
-      // If previously checked, uncheck it since we are adding more
-      this.shoppingList[existingIndex].checked = false;
-    } else {
-      this.shoppingList.push({
-        id: Math.random().toString(36).substring(2, 9),
-        name: name.trim(),
-        quantity,
-        unit: unit.trim(),
-        category: category.trim(),
-        checked: false,
-        recipeName
-      });
-    }
-    this.save();
-  }
-
-  toggleShoppingItem(id: string) {
-    const item = this.shoppingList.find(i => i.id === id);
-    if (item) {
-      item.checked = !item.checked;
-      this.save();
-    }
-  }
-
-  deleteShoppingItem(id: string) {
-    this.shoppingList = this.shoppingList.filter(i => i.id !== id);
-    this.save();
+    this.saveLocal();
+    
+    // Sync to SQLite in the background
+    this.apiCall(`/pantry/${id}`, 'DELETE');
   }
 
   // Cook a recipe: Deduct ingredients from pantry
@@ -200,19 +227,85 @@ class PantryStore {
 
     // Remove any items that reached 0 quantity
     this.pantryItems = this.pantryItems.filter(p => p.quantity > 0);
-    this.save();
+    this.saveLocal();
+
+    // Sync to SQLite in the background
+    this.apiCall('/pantry/cook', 'POST', {
+      ingredients: recipe.ingredients
+    });
+  }
+
+  // --- Shopping List Actions ---
+  addShoppingItem(name: string, quantity: number, unit: string, category: string, recipeName?: string) {
+    if (!name.trim()) return;
+
+    const existingIndex = this.shoppingList.findIndex(
+      i => i.name.toLowerCase() === name.trim().toLowerCase() && i.unit.toLowerCase() === unit.trim().toLowerCase()
+    );
+
+    let itemId = Math.random().toString(36).substring(2, 9);
+
+    if (existingIndex > -1) {
+      this.shoppingList[existingIndex].quantity += quantity;
+      this.shoppingList[existingIndex].checked = false;
+      itemId = this.shoppingList[existingIndex].id;
+    } else {
+      this.shoppingList.push({
+        id: itemId,
+        name: name.trim(),
+        quantity,
+        unit: unit.trim(),
+        category: category.trim(),
+        checked: false,
+        recipeName
+      });
+    }
+    
+    this.saveLocal();
+
+    // Sync to SQLite in the background
+    this.apiCall('/shopping', 'POST', {
+      id: itemId,
+      name: name.trim(),
+      quantity,
+      unit: unit.trim(),
+      category: category.trim(),
+      recipeName
+    });
+  }
+
+  toggleShoppingItem(id: string) {
+    const item = this.shoppingList.find(i => i.id === id);
+    if (item) {
+      item.checked = !item.checked;
+      this.saveLocal();
+
+      // Sync to SQLite in the background
+      this.apiCall(`/shopping/${id}/toggle`, 'PUT');
+    }
+  }
+
+  deleteShoppingItem(id: string) {
+    this.shoppingList = this.shoppingList.filter(i => i.id !== id);
+    this.saveLocal();
+
+    // Sync to SQLite in the background
+    this.apiCall(`/shopping/${id}`, 'DELETE');
   }
 
   // Move checked shopping items to pantry
   purchaseCheckedItems() {
     const checkedItems = this.shoppingList.filter(i => i.checked);
+    
+    // Perform local changes
     checkedItems.forEach(item => {
       this.addPantryItem(item.name, item.quantity, item.unit, item.category);
     });
-
-    // Remove checked items from shopping list
     this.shoppingList = this.shoppingList.filter(i => !i.checked);
-    this.save();
+    this.saveLocal();
+
+    // Sync to SQLite in the background (moves items from shopping to pantry on DB)
+    this.apiCall('/shopping/purchase', 'POST');
   }
 }
 
