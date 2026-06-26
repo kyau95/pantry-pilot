@@ -237,12 +237,12 @@
             <div class="card-right">
               <div class="qty-adjuster">
                 <button 
-                  onclick={() => pantryStore.updatePantryQuantity(item.id, item.quantity - (item.unit === 'pieces' || item.unit === 'slices' ? 1 : 50))} 
+                  onclick={() => pantryStore.updatePantryQuantity(item.id, item.quantity - (item.unit === 'g' || item.unit === 'ml' ? 50 : 1))} 
                   class="qty-btn"
                 >-</button>
                 <span class="qty-display">{item.quantity} <small>{item.unit}</small></span>
                 <button 
-                  onclick={() => pantryStore.updatePantryQuantity(item.id, item.quantity + (item.unit === 'pieces' || item.unit === 'slices' ? 1 : 50))} 
+                  onclick={() => pantryStore.updatePantryQuantity(item.id, item.quantity + (item.unit === 'g' || item.unit === 'ml' ? 50 : 1))} 
                   class="qty-btn"
                 >+</button>
               </div>
