@@ -14,7 +14,10 @@ from db import (
     add_or_update_shopping_item,
     toggle_shopping_item,
     delete_shopping_item,
-    purchase_checked_items_db
+    purchase_checked_items_db,
+    get_all_recipes,
+    add_custom_recipe_db,
+    delete_custom_recipe_db
 )
 
 app = FastAPI(title="Pantry Pilot ADK Agent Backend")
@@ -59,6 +62,19 @@ class ShoppingItemPayload(BaseModel):
     unit: str
     category: str
     recipeName: str = None
+
+class CustomRecipePayload(BaseModel):
+    id: str
+    name: str
+    description: str
+    prepTime: int
+    cookTime: int
+    difficulty: str
+    category: str
+    image: str
+    ingredients: list[dict]
+    instructions: list[str]
+    dietaryTags: list[str] = []
 
 # --- API Routes ---
 
@@ -207,6 +223,40 @@ def delete_shopping(item_id: str):
 def purchase_shopping():
     try:
         purchase_checked_items_db()
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- SQLite Recipes CRUD Endpoints ---
+
+@app.get("/api/recipes")
+def get_recipes():
+    return get_all_recipes()
+
+@app.post("/api/recipes")
+def add_recipe(payload: CustomRecipePayload):
+    try:
+        add_custom_recipe_db(
+            payload.id,
+            payload.name,
+            payload.description,
+            payload.prepTime,
+            payload.cookTime,
+            payload.difficulty,
+            payload.category,
+            payload.image,
+            payload.ingredients,
+            payload.instructions,
+            payload.dietaryTags
+        )
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/recipes/{recipe_id}")
+def delete_recipe(recipe_id: str):
+    try:
+        delete_custom_recipe_db(recipe_id)
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -17,6 +17,7 @@ export interface Recipe {
   ingredients: RecipeIngredient[];
   instructions: string[];
   dietaryTags: string[];
+  isCustom?: boolean;
 }
 
 export const recipes: Recipe[] = [
@@ -107,7 +108,7 @@ export const recipes: Recipe[] = [
     cookTime: 0,
     difficulty: 'Easy',
     category: 'Lunch',
-    image: 'https://images.unsplash.com/photo-1592417817098-8f3d6eb19675?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3',
+    image: 'https://images.unsplash.com/photo-1608897013039-887f21d8c804?w=600&auto=format&fit=crop&q=60',
     ingredients: [
       { name: 'Tomato', quantity: 2, unit: 'pieces', category: 'Vegetables' },
       { name: 'Mozzarella', quantity: 150, unit: 'g', category: 'Dairy' },

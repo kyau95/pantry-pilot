@@ -1,7 +1,7 @@
 <script lang="ts">
   import { pantryStore } from '../stores/pantryStore.svelte';
-  import { recipes, type Recipe } from '../utils/recipeData';
-  import { Search, Clock, ChefHat, Check, AlertTriangle, Plus, X, ShoppingBag } from '@lucide/svelte';
+  import { type Recipe } from '../utils/recipeData';
+  import { Search, Clock, ChefHat, Check, AlertTriangle, Plus, X, ShoppingBag, Trash2 } from '@lucide/svelte';
 
   // Search and filter state
   let searchQuery = $state('');
@@ -16,6 +16,98 @@
   const categories = ['All', 'Breakfast', 'Lunch', 'Dinner', 'Snack'];
   const difficulties = ['All', 'Easy', 'Medium', 'Hard'];
 
+  // Add Custom Recipe Form State
+  let isAddingCustom = $state(false);
+  let customName = $state('');
+  let customDesc = $state('');
+  let customPrep = $state(10);
+  let customCook = $state(15);
+  let customDifficulty = $state<'Easy' | 'Medium' | 'Hard'>('Easy');
+  let customCategory = $state<'Breakfast' | 'Lunch' | 'Dinner' | 'Snack'>('Dinner');
+  let customImage = $state('');
+  
+  let customIngredients = $state<Array<{ name: string; quantity: number; unit: string; category: string }>>([
+    { name: '', quantity: 1, unit: 'pieces', category: 'Vegetables' }
+  ]);
+  let customInstructions = $state<string[]>(['']);
+  let customDietary = $state<string[]>([]);
+
+  const availableCategories = ['Vegetables', 'Fruits', 'Dairy', 'Meats & Proteins', 'Grains', 'Pantry Staples'];
+  const availableUnits = ['pieces', 'g', 'ml', 'slices', 'tbsp', 'cups', 'pack', 'bottle', 'bunch'];
+
+  function addIngredientRow() {
+    customIngredients.push({ name: '', quantity: 1, unit: 'pieces', category: 'Vegetables' });
+  }
+
+  function removeIngredientRow(index: number) {
+    customIngredients = customIngredients.filter((_, i) => i !== index);
+  }
+
+  function addInstructionRow() {
+    customInstructions.push('');
+  }
+
+  function removeInstructionRow(index: number) {
+    customInstructions = customInstructions.filter((_, i) => i !== index);
+  }
+
+  function toggleCustomDietary(tag: string) {
+    if (customDietary.includes(tag)) {
+      customDietary = customDietary.filter(t => t !== tag);
+    } else {
+      customDietary.push(tag);
+    }
+  }
+
+  function resetCustomForm() {
+    customName = '';
+    customDesc = '';
+    customPrep = 10;
+    customCook = 15;
+    customDifficulty = 'Easy';
+    customCategory = 'Dinner';
+    customImage = '';
+    customIngredients = [{ name: '', quantity: 1, unit: 'pieces', category: 'Vegetables' }];
+    customInstructions = [''];
+    customDietary = [];
+    isAddingCustom = false;
+  }
+
+  function handleAddCustomSubmit(e: SubmitEvent) {
+    e.preventDefault();
+    if (!customName.trim()) return;
+
+    const validIngredients = customIngredients.filter(ing => ing.name.trim() !== '');
+    const validInstructions = customInstructions.filter(step => step.trim() !== '');
+
+    if (validIngredients.length === 0) {
+      alert('Please add at least one valid ingredient');
+      return;
+    }
+    if (validInstructions.length === 0) {
+      alert('Please add at least one instruction step');
+      return;
+    }
+
+    const newRecipe: Recipe = {
+      id: 'custom-' + Math.random().toString(36).substring(2, 9),
+      name: customName.trim(),
+      description: customDesc.trim(),
+      prepTime: customPrep,
+      cookTime: customCook,
+      difficulty: customDifficulty,
+      category: customCategory,
+      image: customImage.trim() || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=60',
+      ingredients: validIngredients,
+      instructions: validInstructions,
+      dietaryTags: customDietary,
+      isCustom: true
+    };
+
+    pantryStore.addCustomRecipe(newRecipe);
+    resetCustomForm();
+  }
+
   function toggleDietaryTag(tag: string) {
     if (activeDietary.includes(tag)) {
       activeDietary = activeDietary.filter(t => t !== tag);
@@ -25,9 +117,7 @@
   }
 
   // Check ingredient status in pantry
-  // Returns: { status: 'in-stock' | 'insufficient' | 'missing', inStockQty: number, missingQty: number }
   function getIngredientStatus(reqIng: { name: string; quantity: number }) {
-    // Find matching items in pantry (case insensitive)
     const pantryItems = pantryStore.pantryItems.filter(
       p => p.name.toLowerCase() === reqIng.name.toLowerCase()
     );
@@ -76,7 +166,7 @@
 
   // Derived recipes list with calculated match stats
   let recipesWithStats = $derived.by(() => {
-    return recipes.map(recipe => {
+    return pantryStore.recipes.map(recipe => {
       const stats = getRecipeMatchStats(recipe);
       return {
         ...recipe,
@@ -123,8 +213,7 @@
     pantryStore.cookRecipe(recipeId);
     cookedMessage = `Successfully cooked ${recipeName}! Ingredients deducted from pantry.`;
     if (selectedRecipe && selectedRecipe.id === recipeId) {
-      // Refresh modal data if open
-      selectedRecipe = recipes.find(r => r.id === recipeId) || null;
+      selectedRecipe = pantryStore.recipes.find(r => r.id === recipeId) || null;
     }
     setTimeout(() => {
       cookedMessage = null;
@@ -181,6 +270,10 @@
       <h2>Gourmet Recipe Book</h2>
       <p class="subtitle">Match your scanned pantry items automatically with chef-curated recipes.</p>
     </div>
+    <button class="btn btn-emerald" onclick={() => isAddingCustom = true}>
+      <Plus size={16} />
+      <span>Add Custom Recipe</span>
+    </button>
   </div>
 
   <!-- Search and Filters Section -->
@@ -257,6 +350,16 @@
                 <Clock size={12} />
                 <span>{recipe.prepTime + recipe.cookTime} mins</span>
               </span>
+              {#if recipe.isCustom}
+                <button 
+                  class="badge badge-delete" 
+                  onclick={(e) => { e.stopPropagation(); pantryStore.deleteCustomRecipe(recipe.id); }}
+                  title="Delete recipe"
+                  aria-label="Delete recipe"
+                >
+                  <Trash2 size={12} style="color: #ef4444;" />
+                </button>
+              {/if}
             </div>
             
             <!-- Match Glow Overlay -->
@@ -433,6 +536,208 @@
           {/if}
           <button class="btn btn-secondary" onclick={() => selectedRecipe = null}>Close</button>
         </div>
+      </div>
+    </div>
+  {/if}
+
+  <!-- Add Custom Recipe Modal -->
+  {#if isAddingCustom}
+    <div class="modal-overlay" onclick={resetCustomForm} role="presentation">
+      <div class="modal-content glass custom-recipe-modal" onclick={(e) => e.stopPropagation()} role="presentation">
+        <button class="close-btn" onclick={resetCustomForm} aria-label="Close form">
+          <X size={20} />
+        </button>
+
+        <div class="modal-header-simple">
+          <h2>Create Custom Recipe</h2>
+          <p class="section-sub">Add your own culinary creations to your personal cookbook.</p>
+        </div>
+
+        <form onsubmit={handleAddCustomSubmit} class="modal-body-scroll">
+          <div class="form-grid-three">
+            <div class="form-group flex-2">
+              <label for="recipe-name">Recipe Name</label>
+              <input 
+                type="text" 
+                id="recipe-name" 
+                placeholder="e.g., Mom's Lasagna" 
+                bind:value={customName}
+                required
+                class="form-input"
+              />
+            </div>
+            
+            <div class="form-group">
+              <label for="recipe-img">Image URL (Optional)</label>
+              <input 
+                type="url" 
+                id="recipe-img" 
+                placeholder="https://images.unsplash.com/..." 
+                bind:value={customImage}
+                class="form-input"
+              />
+            </div>
+          </div>
+
+          <div class="form-group mt-3">
+            <label for="recipe-desc">Short Description</label>
+            <textarea 
+              id="recipe-desc" 
+              placeholder="Briefly describe your gourmet recipe..." 
+              bind:value={customDesc}
+              required
+              rows="2"
+              class="form-textarea"
+            ></textarea>
+          </div>
+
+          <div class="form-grid-four mt-3">
+            <div class="form-group">
+              <label for="recipe-category">Meal Type</label>
+              <select id="recipe-category" bind:value={customCategory} class="form-select">
+                <option value="Breakfast">Breakfast</option>
+                <option value="Lunch">Lunch</option>
+                <option value="Dinner">Dinner</option>
+                <option value="Snack">Snack</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="recipe-difficulty">Difficulty</label>
+              <select id="recipe-difficulty" bind:value={customDifficulty} class="form-select">
+                <option value="Easy">Easy</option>
+                <option value="Medium">Medium</option>
+                <option value="Hard">Hard</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="recipe-prep">Prep Time (mins)</label>
+              <input 
+                type="number" 
+                id="recipe-prep" 
+                min="0" 
+                bind:value={customPrep}
+                required
+                class="form-input"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="recipe-cook">Cook Time (mins)</label>
+              <input 
+                type="number" 
+                id="recipe-cook" 
+                min="0" 
+                bind:value={customCook}
+                required
+                class="form-input"
+              />
+            </div>
+          </div>
+
+          <!-- Dietary tags selectors -->
+          <div class="form-group mt-4">
+            <span class="filter-label">Dietary Tags</span>
+            <div class="pills-container mt-1">
+              {#each ['Vegetarian', 'Gluten-Free', 'Dairy-Free'] as tag}
+                <button 
+                  type="button"
+                  class="pill-btn {customDietary.includes(tag) ? 'active-dietary' : ''}"
+                  onclick={() => toggleCustomDietary(tag)}
+                >
+                  {tag}
+                </button>
+              {/each}
+            </div>
+          </div>
+
+          <!-- Dynamic Ingredients List -->
+          <div class="ingredients-form-section mt-4">
+            <div class="section-title-row">
+              <h3>Required Ingredients</h3>
+              <button type="button" class="btn btn-outline-cyan btn-sm" onclick={addIngredientRow}>
+                <Plus size={14} />
+                <span>Add Ingredient</span>
+              </button>
+            </div>
+            
+            <div class="dynamic-rows-container mt-2">
+              {#each customIngredients as ing, idx}
+                <div class="dynamic-row">
+                  <input 
+                    type="text" 
+                    placeholder="Ingredient name (e.g. Pasta)" 
+                    bind:value={ing.name}
+                    required
+                    class="form-input flex-2"
+                  />
+                  <input 
+                    type="number" 
+                    placeholder="Qty" 
+                    min="0.1" 
+                    step="any" 
+                    bind:value={ing.quantity}
+                    required
+                    class="form-input flex-05"
+                  />
+                  <select bind:value={ing.unit} class="form-select flex-1">
+                    {#each availableUnits as unit}
+                      <option value={unit}>{unit}</option>
+                    {/each}
+                  </select>
+                  <select bind:value={ing.category} class="form-select flex-1">
+                    {#each availableCategories as cat}
+                      <option value={cat}>{cat}</option>
+                    {/each}
+                  </select>
+                  {#if customIngredients.length > 1}
+                    <button type="button" class="btn-delete-row" onclick={() => removeIngredientRow(idx)} aria-label="Remove ingredient">
+                      <X size={16} />
+                    </button>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          </div>
+
+          <!-- Dynamic Cooking Steps -->
+          <div class="instructions-form-section mt-4">
+            <div class="section-title-row">
+              <h3>Step-by-Step Instructions</h3>
+              <button type="button" class="btn btn-outline-cyan btn-sm" onclick={addInstructionRow}>
+                <Plus size={14} />
+                <span>Add Step</span>
+              </button>
+            </div>
+
+            <div class="dynamic-rows-container mt-2">
+              {#each customInstructions as step, idx}
+                <div class="dynamic-row">
+                  <span class="step-label">Step {idx + 1}</span>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Boil water and add salt." 
+                    bind:value={customInstructions[idx]}
+                    required
+                    class="form-input flex-2"
+                  />
+                  {#if customInstructions.length > 1}
+                    <button type="button" class="btn-delete-row" onclick={() => removeInstructionRow(idx)} aria-label="Remove step">
+                      <X size={16} />
+                    </button>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          </div>
+
+          <!-- Modal Footer Actions -->
+          <div class="modal-footer mt-4">
+            <button type="submit" class="btn btn-emerald">Save Recipe</button>
+            <button type="button" class="btn btn-secondary" onclick={resetCustomForm}>Cancel</button>
+          </div>
+        </form>
       </div>
     </div>
   {/if}
@@ -1148,8 +1453,171 @@
     to { opacity: 1; transform: scale(1); }
   }
 
-  @keyframes slideUpFade {
-    from { opacity: 0; transform: translate(-50%, 15px); }
-    to { opacity: 1; transform: translate(-50%, 0); }
+  /* Delete Badge on Card */
+  .badge-delete {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: rgba(239, 68, 68, 0.35);
+    cursor: pointer;
+    transition: all 0.2s;
   }
+
+  .badge-delete:hover {
+    background: rgba(239, 68, 68, 0.45);
+    border-color: rgba(239, 68, 68, 0.65);
+    transform: scale(1.05);
+  }
+
+  /* Custom Recipe Modal Styling */
+  .custom-recipe-modal {
+    max-width: 750px !important;
+  }
+
+  .modal-header-simple {
+    padding: 1.5rem 1.5rem 0.5rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .modal-header-simple h2 {
+    font-size: 1.35rem;
+    font-weight: 800;
+    margin: 0;
+    color: var(--color-cyan);
+  }
+
+  .form-grid-three {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .form-grid-three {
+      grid-template-columns: 2fr 1fr;
+    }
+  }
+
+  .form-grid-four {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .form-grid-four {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    text-align: left;
+  }
+
+  .form-group label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    letter-spacing: 0.05em;
+  }
+
+  .form-input, .form-select, .form-textarea {
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--color-text-light);
+    font-family: inherit;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+  }
+
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    outline: none;
+    border-color: var(--color-cyan);
+  }
+
+  .form-textarea {
+    resize: vertical;
+  }
+
+  /* Dynamic Sub-forms */
+  .ingredients-form-section, .instructions-form-section {
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: 1.25rem;
+    text-align: left;
+  }
+
+  .section-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .section-title-row h3 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--color-text-light);
+    margin: 0;
+  }
+
+  .dynamic-rows-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .dynamic-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .step-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--color-cyan);
+    min-width: 55px;
+    flex-shrink: 0;
+  }
+
+  .btn-delete-row {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    padding: 0.4rem;
+    border-radius: 6px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-delete-row:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  .btn-outline-cyan {
+    background: transparent;
+    border: 1px solid rgba(6, 182, 212, 0.25);
+    color: var(--color-cyan);
+  }
+
+  .btn-outline-cyan:hover {
+    background: rgba(6, 182, 212, 0.08);
+    border-color: rgba(6, 182, 212, 0.5);
+  }
+
+  /* Utility sizing classes */
+  .flex-2 { flex: 2; }
+  .flex-1 { flex: 1; }
+  .flex-05 { flex: 0.5; }
+  .mt-1 { margin-top: 0.25rem; }
+  .mt-2 { margin-top: 0.5rem; }
+  .mt-3 { margin-top: 0.75rem; }
+  .mt-4 { margin-top: 1rem; }
 </style>

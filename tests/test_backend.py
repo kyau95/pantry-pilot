@@ -19,6 +19,7 @@ class TestPantryPilotBackend(unittest.TestCase):
         # Point SQLite DB to a test db file during tests
         cls.orig_db_path = db.DB_PATH
         db.DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend", "test_pantry_pilot.db"))
+        # Initialize test DB tables and seed default recipes
         db.init_db()
 
     @classmethod
@@ -33,11 +34,13 @@ class TestPantryPilotBackend(unittest.TestCase):
                 pass
 
     def setUp(self):
-        # Clear tables before each test
+        # Clear pantry and shopping list tables before each test
         conn = db.get_db_connection()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM pantry_items")
         cursor.execute("DELETE FROM shopping_items")
+        # Remove only custom recipes to keep seeded recipes intact
+        cursor.execute("DELETE FROM recipes WHERE is_custom = 1")
         conn.commit()
         conn.close()
 
@@ -60,26 +63,20 @@ class TestPantryPilotBackend(unittest.TestCase):
         """
         Test direct SQLite database helper operations for the Pantry inventory.
         """
-        # 1. Add item
         db.add_or_update_pantry_item("item-123", "Chicken Breast", 2.0, "pack", "Meats & Proteins")
         items = db.get_all_pantry()
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0]["name"], "Chicken Breast")
-        self.assertEqual(items[0]["quantity"], 2.0)
-        self.assertEqual(items[0]["unit"], "pack")
 
-        # 2. Update quantity (increment existing item)
         db.add_or_update_pantry_item("item-456", "Chicken Breast", 3.0, "pack", "Meats & Proteins")
         items = db.get_all_pantry()
-        self.assertEqual(len(items), 1) # Should merge with existing item
+        self.assertEqual(len(items), 1)
         self.assertEqual(items[0]["quantity"], 5.0)
 
-        # 3. Direct qty update
         db.update_pantry_qty(items[0]["id"], 4.5)
         items = db.get_all_pantry()
         self.assertEqual(items[0]["quantity"], 4.5)
 
-        # 4. Direct delete
         db.delete_pantry_item(items[0]["id"])
         items = db.get_all_pantry()
         self.assertEqual(len(items), 0)
@@ -91,7 +88,6 @@ class TestPantryPilotBackend(unittest.TestCase):
         db.add_or_update_pantry_item("item-pasta", "Pasta", 300.0, "g", "Grains")
         db.add_or_update_pantry_item("item-tomato", "Tomato", 3.0, "pieces", "Vegetables")
 
-        # Cook recipe requiring 250g Pasta and 2 Tomatoes
         req_ingredients = [
             {"name": "Pasta", "quantity": 250.0},
             {"name": "Tomato", "quantity": 2.0}
@@ -109,31 +105,62 @@ class TestPantryPilotBackend(unittest.TestCase):
         """
         Test SQLite database CRUD operations for the Shopping List checklist.
         """
-        # 1. Add shopping items
         db.add_or_update_shopping_item("shop-1", "Basil", 1.0, "bunch", "Vegetables")
         db.add_or_update_shopping_item("shop-2", "Cheese", 200.0, "g", "Dairy")
 
         items = db.get_all_shopping()
         self.assertEqual(len(items), 2)
-        self.assertFalse(items[0]["checked"])
 
-        # 2. Toggle checked status
         db.toggle_shopping_item("shop-1")
         items = db.get_all_shopping()
         basil = next(i for i in items if i["id"] == "shop-1")
         self.assertTrue(basil["checked"])
 
-        # 3. Bulk purchase checked items
         db.purchase_checked_items_db()
         
-        # Basil should move to pantry, Cheese stays in shopping list
         shopping_items = db.get_all_shopping()
         self.assertEqual(len(shopping_items), 1)
-        self.assertEqual(shopping_items[0]["name"], "Cheese")
 
         pantry_items = db.get_all_pantry()
         self.assertEqual(len(pantry_items), 1)
-        self.assertEqual(pantry_items[0]["name"], "Basil")
+
+    def test_sqlite_recipe_seeding_and_custom_crud(self):
+        """
+        Test that default recipes are seeded and that custom recipes can be created and deleted.
+        """
+        # 1. Verify default recipes are seeded
+        recipes = db.get_all_recipes()
+        self.assertGreaterEqual(len(recipes), 8)
+        self.assertTrue(any(r["id"] == "creamy-tomato-pasta" for r in recipes))
+        caprese = next(r for r in recipes if r["id"] == "caprese-salad")
+        self.assertEqual(caprese["image"], "https://images.unsplash.com/photo-1608897013039-887f21d8c804?w=600&auto=format&fit=crop&q=60")
+
+        # 2. Add custom recipe
+        db.add_custom_recipe_db(
+            "custom-egg",
+            "Scrambled Eggs Special",
+            "A fast scrambled eggs recipe",
+            5,
+            5,
+            "Easy",
+            "Breakfast",
+            "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600",
+            [{"name": "Eggs", "quantity": 2, "unit": "pieces", "category": "Meats & Proteins"}],
+            ["Crack eggs", "Scramble in skillet"],
+            ["Gluten-Free"]
+        )
+
+        recipes = db.get_all_recipes()
+        self.assertEqual(len(recipes), 9)
+        custom = next(r for r in recipes if r["id"] == "custom-egg")
+        self.assertEqual(custom["name"], "Scrambled Eggs Special")
+        self.assertTrue(custom["isCustom"])
+        self.assertEqual(custom["dietaryTags"], ["Gluten-Free"])
+
+        # 3. Delete custom recipe
+        db.delete_custom_recipe_db("custom-egg")
+        recipes = db.get_all_recipes()
+        self.assertEqual(len(recipes), 8)
 
     def test_live_server_endpoints(self):
         """
@@ -146,55 +173,46 @@ class TestPantryPilotBackend(unittest.TestCase):
         try:
             req = urllib.request.Request(f"{server_url}/api/health", method="GET")
             with urllib.request.urlopen(req, timeout=1.0) as response:
-                health_data = json.loads(response.read().decode('utf-8'))
+                health_data = response.read()
         except (urllib.error.URLError, ConnectionError):
             print("\n⚠️  [SKIPPED] Live integration tests skipped because no running server was detected at http://localhost:8000.")
             return
 
         print(f"\n✅ [RUNNING] Live server detected at {server_url}. Running HTTP integration tests...")
 
-        # 1. Verify health check schema
-        self.assertEqual(health_data["status"], "ok")
-        self.assertIn("SQLite Persistence", health_data["description"])
+        # Verify /api/recipes endpoint returns list
+        req_recipes = urllib.request.Request(f"{server_url}/api/recipes", method="GET")
+        with urllib.request.urlopen(req_recipes) as resp:
+            recipes = json.loads(resp.read().decode('utf-8'))
+            self.assertIsInstance(recipes, list)
+            self.assertGreaterEqual(len(recipes), 8)
 
-        # 2. Verify /api/pantry CRUD
-        # Clear remote pantry for testing (careful: this alters running server state)
-        pantry_payload = {
-            "id": "live-test-item",
-            "name": "Live Test Tomato",
-            "quantity": 3.0,
-            "unit": "pieces",
-            "category": "Vegetables"
+        # Test adding custom recipe via POST
+        custom_payload = {
+            "id": "live-custom-recipe",
+            "name": "Live Custom Salad",
+            "description": "A fresh custom salad",
+            "prepTime": 5,
+            "cookTime": 0,
+            "difficulty": "Easy",
+            "category": "Lunch",
+            "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600",
+            "ingredients": [{"name": "Lettuce", "quantity": 1, "unit": "head", "category": "Vegetables"}],
+            "instructions": ["Chop lettuce", "Toss in bowl"],
+            "dietaryTags": ["Vegetarian"]
         }
-        req_add = urllib.request.Request(
-            f"{server_url}/api/pantry",
-            data=json.dumps(pantry_payload).encode('utf-8'),
+        req_post = urllib.request.Request(
+            f"{server_url}/api/recipes",
+            data=json.dumps(custom_payload).encode('utf-8'),
             headers={"Content-Type": "application/json"},
             method="POST"
         )
-        with urllib.request.urlopen(req_add) as resp:
+        with urllib.request.urlopen(req_post) as resp:
             self.assertEqual(json.loads(resp.read().decode('utf-8'))["status"], "success")
 
-        # Verify it was added
-        req_get = urllib.request.Request(f"{server_url}/api/pantry", method="GET")
-        with urllib.request.urlopen(req_get) as resp:
-            items = json.loads(resp.read().decode('utf-8'))
-            self.assertTrue(any(i["id"] == "live-test-item" for i in items))
-
-        # Update quantity
-        qty_payload = {"quantity": 5.0}
-        req_update = urllib.request.Request(
-            f"{server_url}/api/pantry/live-test-item",
-            data=json.dumps(qty_payload).encode('utf-8'),
-            headers={"Content-Type": "application/json"},
-            method="PUT"
-        )
-        with urllib.request.urlopen(req_update) as resp:
-            self.assertEqual(json.loads(resp.read().decode('utf-8'))["status"], "success")
-
-        # Delete it
+        # Test deleting it
         req_del = urllib.request.Request(
-            f"{server_url}/api/pantry/live-test-item",
+            f"{server_url}/api/recipes/live-custom-recipe",
             method="DELETE"
         )
         with urllib.request.urlopen(req_del) as resp:

@@ -1,4 +1,4 @@
-import { recipes } from '../utils/recipeData';
+import { recipes as defaultRecipes, type Recipe } from '../utils/recipeData';
 
 export interface PantryItem {
   id: string;
@@ -25,6 +25,7 @@ const API_URL = 'http://localhost:8000/api';
 class PantryStore {
   pantryItems = $state<PantryItem[]>([]);
   shoppingList = $state<ShoppingItem[]>([]);
+  recipes = $state<Recipe[]>([]);
   isSynced = $state(false);
 
   constructor() {
@@ -39,6 +40,7 @@ class PantryStore {
     try {
       const savedPantry = localStorage.getItem('pp_pantry');
       const savedShopping = localStorage.getItem('pp_shopping');
+      const savedRecipes = localStorage.getItem('pp_recipes');
       
       if (savedPantry) {
         const items = JSON.parse(savedPantry);
@@ -72,6 +74,12 @@ class PantryStore {
       } else {
         this.shoppingList = [];
       }
+
+      if (savedRecipes) {
+        this.recipes = JSON.parse(savedRecipes);
+      } else {
+        this.recipes = defaultRecipes;
+      }
     } catch (e) {
       console.error('Failed to load pantry data from localStorage', e);
     }
@@ -87,10 +95,15 @@ class PantryStore {
       const shoppingRes = await fetch(`${API_URL}/shopping`);
       if (!shoppingRes.ok) throw new Error('Failed to fetch shopping list from backend');
       const dbShopping = await shoppingRes.json();
+
+      const recipesRes = await fetch(`${API_URL}/recipes`);
+      if (!recipesRes.ok) throw new Error('Failed to fetch recipes from backend');
+      const dbRecipes = await recipesRes.json();
       
       // Update state with backend data
       this.pantryItems = dbPantry;
       this.shoppingList = dbShopping;
+      this.recipes = dbRecipes;
       this.isSynced = true;
       this.saveLocal();
       console.log('[SQLite Store] Sync completed successfully. Loaded data from SQLite.');
@@ -104,6 +117,7 @@ class PantryStore {
     try {
       localStorage.setItem('pp_pantry', JSON.stringify(this.pantryItems));
       localStorage.setItem('pp_shopping', JSON.stringify(this.shoppingList));
+      localStorage.setItem('pp_recipes', JSON.stringify(this.recipes));
     } catch (e) {
       console.error('Failed to save pantry data to localStorage', e);
     }
@@ -203,7 +217,7 @@ class PantryStore {
 
   // Cook a recipe: Deduct ingredients from pantry
   cookRecipe(recipeId: string) {
-    const recipe = recipes.find(r => r.id === recipeId);
+    const recipe = this.recipes.find(r => r.id === recipeId);
     if (!recipe) return;
 
     recipe.ingredients.forEach(reqIng => {
@@ -306,6 +320,35 @@ class PantryStore {
 
     // Sync to SQLite in the background (moves items from shopping to pantry on DB)
     this.apiCall('/shopping/purchase', 'POST');
+  }
+
+  // --- Custom Recipe Actions ---
+  addCustomRecipe(recipe: Recipe) {
+    this.recipes.push(recipe);
+    this.saveLocal();
+
+    // Sync to SQLite in the background
+    this.apiCall('/recipes', 'POST', {
+      id: recipe.id,
+      name: recipe.name,
+      description: recipe.description,
+      prepTime: recipe.prepTime,
+      cookTime: recipe.cookTime,
+      difficulty: recipe.difficulty,
+      category: recipe.category,
+      image: recipe.image,
+      ingredients: recipe.ingredients,
+      instructions: recipe.instructions,
+      dietaryTags: recipe.dietaryTags
+    });
+  }
+
+  deleteCustomRecipe(id: string) {
+    this.recipes = this.recipes.filter(r => r.id !== id);
+    this.saveLocal();
+
+    // Sync to SQLite in the background
+    this.apiCall(`/recipes/${id}`, 'DELETE');
   }
 }
 
