@@ -10,8 +10,19 @@
   let selectedRecipe = $state<Recipe | null>(null);
   let cookedMessage = $state<string | null>(null);
 
+  // Dietary filter state
+  let activeDietary = $state<string[]>([]);
+
   const categories = ['All', 'Breakfast', 'Lunch', 'Dinner', 'Snack'];
   const difficulties = ['All', 'Easy', 'Medium', 'Hard'];
+
+  function toggleDietaryTag(tag: string) {
+    if (activeDietary.includes(tag)) {
+      activeDietary = activeDietary.filter(t => t !== tag);
+    } else {
+      activeDietary.push(tag);
+    }
+  }
 
   // Check ingredient status in pantry
   // Returns: { status: 'in-stock' | 'insufficient' | 'missing', inStockQty: number, missingQty: number }
@@ -84,6 +95,13 @@
 
     if (selectedDifficulty !== 'All') {
       list = list.filter(r => r.difficulty === selectedDifficulty);
+    }
+
+    // Filter by active dietary tags
+    if (activeDietary.length > 0) {
+      list = list.filter(r => 
+        activeDietary.every(tag => r.dietaryTags && r.dietaryTags.includes(tag))
+      );
     }
 
     if (searchQuery.trim()) {
@@ -203,6 +221,21 @@
               onclick={() => selectedDifficulty = difficulty}
             >
               {difficulty}
+            </button>
+          {/each}
+        </div>
+      </div>
+
+      <!-- Dietary Filters -->
+      <div class="filter-group">
+        <span class="filter-label">Dietary Filters</span>
+        <div class="pills-container">
+          {#each ['Vegetarian', 'Gluten-Free', 'Dairy-Free'] as tag}
+            <button 
+              class="pill-btn {activeDietary.includes(tag) ? 'active-dietary' : ''}"
+              onclick={() => toggleDietaryTag(tag)}
+            >
+              {tag}
             </button>
           {/each}
         </div>
@@ -478,7 +511,7 @@
 
   @media (min-width: 768px) {
     .filter-controls {
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(3, 1fr);
     }
   }
 
@@ -531,6 +564,13 @@
     border-color: var(--color-cyan);
     color: #fff;
     box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
+  }
+
+  .pill-btn.active-dietary {
+    background: var(--color-emerald);
+    border-color: var(--color-emerald);
+    color: #fff;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
   }
 
   /* Recipes Grid */

@@ -14,6 +14,15 @@
   let formUnit = $state('pieces');
   let formCategory = $state('Vegetables');
 
+  // Helper to format default dates
+  function getDefaultDateString(daysAhead: number) {
+    const d = new Date();
+    d.setDate(d.getDate() + daysAhead);
+    return d.toISOString().split('T')[0];
+  }
+
+  let formUseBy = $state(getDefaultDateString(7));
+
   const categories = [
     'All',
     'Vegetables',
@@ -26,7 +35,7 @@
 
   const units = ['pieces', 'g', 'ml', 'slices', 'tbsp', 'cups', 'pack', 'bottle', 'bunch'];
 
-  // Filtered items computed reactively
+  // Filtered items computed reactively, sorted by expiration (earliest first)
   let filteredItems = $derived.by(() => {
     let items = pantryStore.pantryItems;
     
@@ -39,20 +48,28 @@
       items = items.filter(item => item.name.toLowerCase().includes(query));
     }
     
-    // Sort by name
-    return [...items].sort((a, b) => a.name.localeCompare(b.name));
+    // Sort by useByDate ascending, then by name
+    return [...items].sort((a, b) => {
+      const timeA = new Date(a.useByDate).getTime();
+      const timeB = new Date(b.useByDate).getTime();
+      if (timeA !== timeB) return timeA - timeB;
+      return a.name.localeCompare(b.name);
+    });
   });
 
   function handleSubmit(e: SubmitEvent) {
     e.preventDefault();
     if (!formName.trim()) return;
 
-    pantryStore.addPantryItem(formName, formQty, formUnit, formCategory);
+    // Convert date string from input to ISO Date
+    const isoDate = new Date(formUseBy).toISOString();
+    pantryStore.addPantryItem(formName, formQty, formUnit, formCategory, isoDate);
     
     // Reset Form
     formName = '';
     formQty = 1;
     formUnit = 'pieces';
+    formUseBy = getDefaultDateString(7);
     isAddingManual = false;
   }
 
@@ -61,8 +78,28 @@
     return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   }
 
-  // Quick helper to suggest stock levels
+  function getDaysRemaining(isoString: string) {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const expiry = new Date(isoString);
+    expiry.setHours(0,0,0,0);
+    
+    const diffTime = expiry.getTime() - today.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  }
+
+  // Quick helper to suggest stock levels and expiration
   function getStockStatus(item: typeof pantryStore.pantryItems[0]) {
+    const daysRemaining = getDaysRemaining(item.useByDate);
+    if (daysRemaining < 0) {
+      return { label: `Expired (${Math.abs(daysRemaining)}d ago)`, class: 'status-expired' };
+    }
+    if (daysRemaining === 0) {
+      return { label: 'Expires Today', class: 'status-expired' };
+    }
+    if (daysRemaining <= 3) {
+      return { label: `Expires in ${daysRemaining}d`, class: 'status-expiring' };
+    }
     if (item.quantity <= 2 && (item.unit === 'pieces' || item.unit === 'slices')) {
       return { label: 'Low Stock', class: 'status-low' };
     }
@@ -130,6 +167,17 @@
                 <option value={cat}>{cat}</option>
               {/each}
             </select>
+          </div>
+
+          <div class="form-group">
+            <label for="item-expiry">Use By Date</label>
+            <input 
+              type="date" 
+              id="item-expiry" 
+              bind:value={formUseBy}
+              required
+              class="form-input"
+            />
           </div>
 
           <div class="form-group-row">
@@ -462,6 +510,18 @@
   }
 
   .status-low {
+    background: rgba(249, 115, 22, 0.1);
+    color: var(--color-orange);
+    border: 1px solid rgba(249, 115, 22, 0.2);
+  }
+
+  .status-expired {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+  }
+
+  .status-expiring {
     background: rgba(249, 115, 22, 0.1);
     color: var(--color-orange);
     border: 1px solid rgba(249, 115, 22, 0.2);

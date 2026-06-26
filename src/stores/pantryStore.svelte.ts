@@ -7,6 +7,7 @@ export interface PantryItem {
   unit: string;
   category: string;
   createdAt: string;
+  useByDate: string;
 }
 
 export interface ShoppingItem {
@@ -36,14 +37,29 @@ class PantryStore {
       const savedShopping = localStorage.getItem('pp_shopping');
       
       if (savedPantry) {
-        this.pantryItems = JSON.parse(savedPantry);
+        const items = JSON.parse(savedPantry);
+        // Migrate legacy items that are missing useByDate
+        this.pantryItems = items.map((item: any) => {
+          if (!item.useByDate) {
+            const date = new Date(item.createdAt || new Date());
+            date.setDate(date.getDate() + 7);
+            return { ...item, useByDate: date.toISOString() };
+          }
+          return item;
+        });
       } else {
         // Seed default pantry items for initial load
+        const now = new Date();
+        const getFutureDate = (days: number) => {
+          const d = new Date(now);
+          d.setDate(d.getDate() + days);
+          return d.toISOString();
+        };
         this.pantryItems = [
-          { id: '1', name: 'Eggs', quantity: 6, unit: 'pieces', category: 'Meats & Proteins', createdAt: new Date().toISOString() },
-          { id: '2', name: 'Bread', quantity: 6, unit: 'slices', category: 'Grains', createdAt: new Date().toISOString() },
-          { id: '3', name: 'Butter', quantity: 4, unit: 'tbsp', category: 'Dairy', createdAt: new Date().toISOString() },
-          { id: '4', name: 'Tomato', quantity: 2, unit: 'pieces', category: 'Vegetables', createdAt: new Date().toISOString() }
+          { id: '1', name: 'Eggs', quantity: 6, unit: 'pieces', category: 'Meats & Proteins', createdAt: now.toISOString(), useByDate: getFutureDate(5) },
+          { id: '2', name: 'Bread', quantity: 6, unit: 'slices', category: 'Grains', createdAt: now.toISOString(), useByDate: getFutureDate(3) },
+          { id: '3', name: 'Butter', quantity: 4, unit: 'tbsp', category: 'Dairy', createdAt: now.toISOString(), useByDate: getFutureDate(14) },
+          { id: '4', name: 'Tomato', quantity: 2, unit: 'pieces', category: 'Vegetables', createdAt: now.toISOString(), useByDate: getFutureDate(2) }
         ];
         this.save();
       }
@@ -68,15 +84,27 @@ class PantryStore {
   }
 
   // --- Pantry Actions ---
-  addPantryItem(name: string, quantity: number, unit: string, category: string) {
+  addPantryItem(name: string, quantity: number, unit: string, category: string, useByDate?: string) {
     if (!name.trim()) return;
     
     const existingIndex = this.pantryItems.findIndex(
       i => i.name.toLowerCase() === name.trim().toLowerCase() && i.unit.toLowerCase() === unit.trim().toLowerCase()
     );
 
+    // Default expiration date: 7 days from now
+    let expiry = useByDate;
+    if (!expiry) {
+      const d = new Date();
+      d.setDate(d.getDate() + 7);
+      expiry = d.toISOString();
+    }
+
     if (existingIndex > -1) {
       this.pantryItems[existingIndex].quantity += quantity;
+      // Keep the earlier expiration date
+      if (new Date(expiry) < new Date(this.pantryItems[existingIndex].useByDate)) {
+        this.pantryItems[existingIndex].useByDate = expiry;
+      }
     } else {
       this.pantryItems.push({
         id: Math.random().toString(36).substring(2, 9),
@@ -84,7 +112,8 @@ class PantryStore {
         quantity,
         unit: unit.trim(),
         category: category.trim(),
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        useByDate: expiry
       });
     }
     this.save();

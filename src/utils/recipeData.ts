@@ -16,6 +16,7 @@ export interface Recipe {
   image: string;
   ingredients: RecipeIngredient[];
   instructions: string[];
+  dietaryTags: string[];
 }
 
 export const recipes: Recipe[] = [
@@ -45,7 +46,8 @@ export const recipes: Recipe[] = [
       'Chop tomatoes and add them to the pan. Cook until they break down and form a sauce (about 7 mins).',
       'Stir in the milk and let it simmer gently for 2 minutes to thicken.',
       'Drain pasta and toss it directly into the sauce. Tear fresh basil leaves and fold them in just before serving.'
-    ]
+    ],
+    dietaryTags: ['Vegetarian']
   },
   {
     id: 'avocado-toast-egg',
@@ -68,7 +70,8 @@ export const recipes: Recipe[] = [
       'Poach or fry the egg to your liking (a runny yolk is recommended).',
       'Spread the mashed avocado evenly over the toasted bread.',
       'Top with the cooked egg and optionally sprinkle with red pepper flakes or sesame seeds.'
-    ]
+    ],
+    dietaryTags: ['Vegetarian']
   },
   {
     id: 'garlic-butter-chicken',
@@ -93,7 +96,8 @@ export const recipes: Recipe[] = [
       'Reduce heat to medium. Add remaining butter and minced garlic to the skillet. Cook for 1 minute until fragrant.',
       'Add baby spinach and cook until wilted (about 2 minutes).',
       'Return chicken to the skillet, toss in the garlic butter sauce, and serve hot.'
-    ]
+    ],
+    dietaryTags: ['Gluten-Free']
   },
   {
     id: 'caprese-salad',
@@ -115,7 +119,8 @@ export const recipes: Recipe[] = [
       'Alternate layering tomato slices and mozzarella slices on a serving platter.',
       'Tuck whole fresh basil leaves between the tomato and cheese slices.',
       'Drizzle generously with extra virgin olive oil and season with sea salt and cracked black pepper.'
-    ]
+    ],
+    dietaryTags: ['Vegetarian', 'Gluten-Free']
   },
   {
     id: 'spinach-cheese-omelet',
@@ -138,7 +143,8 @@ export const recipes: Recipe[] = [
       'Pour in the eggs. Let them cook slightly, then use a spatula to push the cooked edges toward the center.',
       'Once the eggs are mostly set but still slightly wet on top, scatter the baby spinach and shredded cheese over one half.',
       'Fold the omelet in half, cook for 1 more minute until cheese melts, and slide onto a plate.'
-    ]
+    ],
+    dietaryTags: ['Vegetarian', 'Gluten-Free']
   },
   {
     id: 'french-toast',
@@ -161,7 +167,8 @@ export const recipes: Recipe[] = [
       'Dip a slice of bread into the egg mixture for 10 seconds per side, allowing it to soak up the liquid.',
       'Place in the hot skillet and cook for 2-3 minutes per side until golden brown.',
       'Repeat with remaining slices, adding more butter as needed. Serve with honey, syrup, or fruit.'
-    ]
+    ],
+    dietaryTags: ['Vegetarian']
   },
   {
     id: 'chicken-spinach-stir-fry',
@@ -185,7 +192,8 @@ export const recipes: Recipe[] = [
       'Add chicken strips and stir-fry until cooked through and slightly browned (about 5 mins). Remove from wok.',
       'Add onion and garlic to the wok, stir-frying for 2 minutes until tender.',
       'Add spinach and return chicken to the wok. Toss continuously until the spinach is wilted and chicken is heated through (about 2 mins).'
-    ]
+    ],
+    dietaryTags: ['Gluten-Free', 'Dairy-Free']
   },
   {
     id: 'simple-grilled-cheese',
@@ -207,6 +215,7 @@ export const recipes: Recipe[] = [
       'Lay the cheese slices evenly on top of the bread, then top with the second slice of bread, buttered-side up.',
       'Turn the heat to medium-low. Cook for 3-4 minutes until the bottom is golden brown and cheese begins to melt.',
       'Flip carefully and cook the other side for another 3 minutes until crispy and golden and cheese is completely melted.'
-    ]
+    ],
+    dietaryTags: ['Vegetarian']
   }
 ];

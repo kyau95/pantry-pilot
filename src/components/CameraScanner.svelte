@@ -16,6 +16,19 @@
   // ADK Backend State
   let backendConnected = $state(false);
   let backendMode = $state('offline');
+
+  // Scanner modes: camera or barcode
+  let scannerMode = $state<'camera' | 'barcode'>('camera');
+  let barcodeInput = $state('');
+  let barcodeError = $state<string | null>(null);
+
+  const barcodeDatabase: Record<string, { name: string; quantity: number; unit: string; category: string; expiryDays: number }> = {
+    '800223': { name: 'Pasta', quantity: 250, unit: 'g', category: 'Grains', expiryDays: 365 },
+    '501004': { name: 'Cheese', quantity: 200, unit: 'g', category: 'Dairy', expiryDays: 14 },
+    '401120': { name: 'Avocado', quantity: 2, unit: 'pieces', category: 'Fruits', expiryDays: 5 },
+    '326082': { name: 'Olive Oil', quantity: 1, unit: 'bottle', category: 'Pantry Staples', expiryDays: 180 },
+    '123456': { name: 'Eggs', quantity: 6, unit: 'pieces', category: 'Meats & Proteins', expiryDays: 10 }
+  };
   
   // Scanned results structure
   interface DetectedItem {
@@ -201,7 +214,9 @@
 
   function pushToPantry() {
     detectedItems.forEach(item => {
-      pantryStore.addPantryItem(item.name, item.quantity, item.unit, item.category);
+      // Pass the specific useByDate if parsed from barcode, otherwise store will default it
+      const expiry = (item as any).useByDate;
+      pantryStore.addPantryItem(item.name, item.quantity, item.unit, item.category, expiry);
     });
     
     addPantrySuccess = true;
@@ -214,8 +229,48 @@
   function resetScanner() {
     detectedItems = [];
     capturedImageData = null;
+    barcodeInput = '';
+    barcodeError = null;
     scanStep = 'idle';
-    startCamera();
+    if (scannerMode === 'camera') {
+      startCamera();
+    }
+  }
+
+  function handleBarcodeScan() {
+    barcodeError = null;
+    const code = barcodeInput.trim();
+    if (!code) return;
+    
+    scanning = true;
+    scanStep = 'analyzing';
+    
+    setTimeout(() => {
+      const matched = barcodeDatabase[code];
+      if (matched) {
+        // Calculate expiration date
+        const exp = new Date();
+        exp.setDate(exp.getDate() + matched.expiryDays);
+        
+        detectedItems = [{
+          name: matched.name,
+          quantity: matched.quantity,
+          unit: matched.unit,
+          category: matched.category,
+          confidence: 0.99,
+          box: { x: 25, y: 25, w: 50, h: 50 },
+          useByDate: exp.toISOString()
+        } as any];
+        
+        // Mock capture image data
+        capturedImageData = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100%' height='100%' fill='%23080c18'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%2306b6d4' font-family='sans-serif' font-size='10'>BARCODE SCAN</text></svg>";
+        scanStep = 'results';
+      } else {
+        barcodeError = `Barcode "${code}" not recognized. Try 501004 (Cheese) or 800223 (Pasta).`;
+        scanStep = 'idle';
+      }
+      scanning = false;
+    }, 1200);
   }
 
   async function checkBackendConnection() {
@@ -261,8 +316,24 @@
           <span>{backendConnected ? `ADK Agent: ${backendMode}` : 'Local Simulator'}</span>
         </div>
       </div>
+
+      <div class="mode-toggles">
+        <button 
+          class="mode-btn {scannerMode === 'camera' ? 'active' : ''}" 
+          onclick={() => { scannerMode = 'camera'; startCamera(); resetScanner(); }}
+        >
+          Camera Scan
+        </button>
+        <button 
+          class="mode-btn {scannerMode === 'barcode' ? 'active' : ''}" 
+          onclick={() => { scannerMode = 'barcode'; stopCamera(); resetScanner(); }}
+        >
+          Barcode Reader
+        </button>
+      </div>
+
       <h2>Visual Ingredient Scanner</h2>
-      <p class="section-desc">Point your camera at a group of ingredients, or use a simulated demo basket below to test the AI detection loop.</p>
+      <p class="section-desc">Point your camera at a group of ingredients, or use a simulated demo basket or barcode scan below to test the AI detection loop.</p>
     </div>
 
     <!-- Camera Window -->
@@ -274,8 +345,61 @@
       <!-- Canvas for capturing frame -->
       <canvas bind:this={canvasEl} class="hidden-canvas"></canvas>
 
-      <!-- Video Feed / Fallback Simulated Visualizer -->
-      {#if cameraActive && scanStep !== 'results'}
+      <!-- Barcode Scanner Window -->
+      {#if scannerMode === 'barcode' && scanStep !== 'results'}
+        <div class="barcode-scanner-view">
+          <div class="scanning-grid"></div>
+          
+          {#if scanStep === 'analyzing'}
+            <div class="analyzer-status animate-bounce">
+              <RefreshCw size={40} class="animate-spin text-emerald" />
+              <span>Decoding Barcode...</span>
+            </div>
+          {:else}
+            <div class="barcode-frame-container">
+              <div class="barcode-bracket top-left"></div>
+              <div class="barcode-bracket top-right"></div>
+              <div class="barcode-bracket bottom-left"></div>
+              <div class="barcode-bracket bottom-right"></div>
+              
+              <!-- Mock barcode graphic bars -->
+              <div class="barcode-bars">
+                <div class="bar thin"></div>
+                <div class="bar thick"></div>
+                <div class="bar thin"></div>
+                <div class="bar medium"></div>
+                <div class="bar thin"></div>
+                <div class="bar thick"></div>
+                <div class="bar medium"></div>
+                <div class="bar thin"></div>
+              </div>
+              <span class="barcode-label">Align Barcode within brackets</span>
+            </div>
+            
+            <div class="barcode-input-panel">
+              <input 
+                type="text" 
+                placeholder="Enter Code (e.g. 501004, 800223)" 
+                bind:value={barcodeInput}
+                class="barcode-input"
+              />
+              <button class="btn btn-emerald" onclick={handleBarcodeScan} disabled={scanning}>
+                Simulate Scan
+              </button>
+            </div>
+            
+            {#if barcodeError}
+              <div class="barcode-error">
+                <AlertCircle size={14} />
+                <span>{barcodeError}</span>
+              </div>
+            {/if}
+          {/if}
+          
+          <!-- Laser red scan line for barcode -->
+          <div class="laser-line-red"></div>
+        </div>
+      {:else if scannerMode === 'camera' && cameraActive && scanStep !== 'results'}
         <!-- svelte-ignore a11y_media_has_caption -->
         <video 
           bind:this={videoEl}
@@ -343,9 +467,9 @@
           <RefreshCw size={16} />
           <span>Scan Another</span>
         </button>
-      {:else}
+      {:else if scannerMode === 'camera'}
         <button 
-          class="btn btn-primary btn-scan {scanning ? 'disabled' : ''}" 
+          class="btn btn-cyan btn-scan {scanning ? 'disabled' : ''}" 
           onclick={captureAndScan}
           disabled={scanning}
         >
@@ -1014,5 +1138,150 @@
 
   .badge-local .pulse-indicator {
     background-color: var(--color-orange);
+  }
+
+  /* Mode toggles styling */
+  .mode-toggles {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    margin-bottom: 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    align-self: flex-start;
+  }
+
+  .mode-btn {
+    background: transparent;
+    border: none;
+    padding: 0.35rem 0.85rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: var(--font-sans);
+  }
+
+  .mode-btn.active {
+    background: var(--color-cyan);
+    color: #fff;
+    box-shadow: 0 0 10px var(--color-cyan-glow);
+  }
+
+  /* Barcode Scanner layout styles */
+  .barcode-scanner-view {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: radial-gradient(circle at center, #0b1227 0%, #040713 100%);
+  }
+
+  .barcode-frame-container {
+    position: relative;
+    width: 240px;
+    height: 120px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 2;
+  }
+
+  .barcode-bracket {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-color: var(--color-cyan);
+    border-style: solid;
+    border-width: 0;
+  }
+
+  .barcode-bracket.top-left { top: -2px; left: -2px; border-top-width: 3px; border-left-width: 3px; border-top-left-radius: 6px; }
+  .barcode-bracket.top-right { top: -2px; right: -2px; border-top-width: 3px; border-right-width: 3px; border-top-right-radius: 6px; }
+  .barcode-bracket.bottom-left { bottom: -2px; left: -2px; border-bottom-width: 3px; border-left-width: 3px; border-bottom-left-radius: 6px; }
+  .barcode-bracket.bottom-right { bottom: -2px; right: -2px; border-bottom-width: 3px; border-right-width: 3px; border-bottom-right-radius: 6px; }
+
+  .barcode-bars {
+    display: flex;
+    align-items: stretch;
+    height: 50px;
+    gap: 3px;
+    margin-bottom: 0.5rem;
+    opacity: 0.7;
+  }
+
+  .bar {
+    background-color: var(--color-text-light);
+    border-radius: 1px;
+  }
+
+  .bar.thin { width: 2px; }
+  .bar.medium { width: 4px; }
+  .bar.thick { width: 8px; }
+
+  .barcode-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .barcode-input-panel {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 320px;
+    z-index: 2;
+  }
+
+  .barcode-input {
+    flex-grow: 1;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--color-text-light);
+    font-family: inherit;
+    font-size: 0.85rem;
+  }
+
+  .barcode-input:focus {
+    outline: none;
+    border-color: var(--color-emerald);
+  }
+
+  .barcode-error {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    color: #ef4444;
+    margin-top: 0.75rem;
+    z-index: 2;
+  }
+
+  .laser-line-red {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #ef4444, transparent);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+    z-index: 3;
+    animation: scan 3s linear infinite;
   }
 </style>

@@ -18,6 +18,7 @@ app.add_middleware(
 class MealPlanRequest(BaseModel):
     inventory: list[dict]
     preference: str
+    dietary_tags: list[str] = []
 
 @app.get("/api/health")
 def health_check():
@@ -76,7 +77,8 @@ async def plan_meal(request: MealPlanRequest):
             f"Preheat your skillet or oven and prepare ingredients for {pref} seasoning.",
             "Combine ingredients carefully in order of cook time required.",
             "Toss in fresh herbs, plate elegantly, and serve immediately while hot."
-        ]
+        ],
+        "dietaryTags": request.dietary_tags
     }
     return {"status": "success", "recipe": recipe}
 

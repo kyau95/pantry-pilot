@@ -100,3 +100,9 @@ pantry-pilot/
 
 ## 🚀 6. Setup & Launch
 Please refer to the separate [SETUP.md](file://wsl.localhost/Ubuntu-24.04/home/keyau/pantry-pilot/SETUP.md) file for detailed installation instructions and run commands.
+
+---
+
+## 🧪 7. Testing Guide
+To learn more about automated and manual testing procedures, refer to the [TESTING.md](file://wsl.localhost/Ubuntu-24.04/home/keyau/pantry-pilot/TESTING.md) guide.
+
