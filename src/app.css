@@ -1,0 +1,200 @@
+/* Google Font Import */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  /* Color Palette (Premium Dark Mode) */
+  --color-bg-dark: #0a0f1d;
+  --color-bg-dark-gradient: linear-gradient(135deg, #070b16 0%, #0f172a 100%);
+  --color-card-bg: rgba(30, 41, 59, 0.45);
+  --color-card-border: rgba(255, 255, 255, 0.07);
+  --color-text-light: #f8fafc;
+  --color-text-muted: #94a3b8;
+  
+  /* Neon Accents */
+  --color-cyan: #06b6d4;
+  --color-cyan-glow: rgba(6, 182, 212, 0.3);
+  --color-emerald: #10b981;
+  --color-emerald-glow: rgba(16, 185, 129, 0.3);
+  --color-orange: #f97316;
+  --color-orange-glow: rgba(249, 115, 22, 0.3);
+  
+  /* Fonts */
+  --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--color-bg-dark);
+  background-image: var(--color-bg-dark-gradient);
+  color: var(--color-text-light);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-cyan);
+  box-shadow: 0 0 8px var(--color-cyan-glow);
+}
+
+/* Glassmorphism Styles */
+.glass {
+  background: var(--color-card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-card-border);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card {
+  border-radius: 16px;
+  padding: 1.5rem;
+}
+
+/* Button UI Components */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: 8px;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  color: #fff;
+  text-decoration: none;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-cyan {
+  background: var(--color-cyan);
+  box-shadow: 0 4px 14px var(--color-cyan-glow);
+}
+
+.btn-cyan:hover:not(:disabled) {
+  background: #0891b2;
+  box-shadow: 0 4px 20px rgba(6, 182, 212, 0.5);
+  transform: translateY(-1px);
+}
+
+.btn-emerald {
+  background: var(--color-emerald);
+  box-shadow: 0 4px 14px var(--color-emerald-glow);
+}
+
+.btn-emerald:hover:not(:disabled) {
+  background: #059669;
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.5);
+  transform: translateY(-1px);
+}
+
+.btn-orange {
+  background: var(--color-orange);
+  box-shadow: 0 4px 14px var(--color-orange-glow);
+}
+
+.btn-orange:hover:not(:disabled) {
+  background: #ea580c;
+  box-shadow: 0 4px 20px rgba(249, 115, 22, 0.5);
+  transform: translateY(-1px);
+}
+
+.btn-outline-orange {
+  background: transparent;
+  border: 1px solid var(--color-orange);
+  color: var(--color-orange);
+}
+
+.btn-outline-orange:hover:not(:disabled) {
+  background: rgba(249, 115, 22, 0.1);
+  box-shadow: 0 0 10px var(--color-orange-glow);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--color-text-light);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Utility Colors & Text styling */
+.text-emerald {
+  color: var(--color-emerald);
+}
+
+.text-cyan {
+  color: var(--color-cyan);
+}
+
+.text-orange {
+  color: var(--color-orange);
+}
+
+.text-muted {
+  color: var(--color-text-muted);
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+/* Animations */
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.6;
+    box-shadow: 0 0 15px var(--color-cyan-glow);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 25px rgba(6, 182, 212, 0.6);
+  }
+}
+
+@keyframes ping {
+  0% { transform: scale(1); opacity: 1; }
+  70%, 100% { transform: scale(2); opacity: 0; }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
