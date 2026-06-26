@@ -592,6 +592,7 @@
     text-align: center;
     padding: 0;
     -moz-appearance: textfield;
+    appearance: textfield;
   }
 
   .qty-input::-webkit-outer-spin-button,
