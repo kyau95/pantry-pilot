@@ -1,5 +1,6 @@
 import os
 import uuid
+import re
 from recipe_scrapers import scrape_html, HEADERS
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -275,6 +276,113 @@ def delete_recipe(recipe_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+UNICODE_FRACTIONS = {
+    "½": 0.5,
+    "¼": 0.25,
+    "¾": 0.75,
+    "⅓": 0.33,
+    "⅔": 0.66,
+    "⅛": 0.125,
+    "⅝": 0.625,
+    "⅞": 0.875,
+}
+
+def parse_ingredient_string(raw_str: str) -> dict:
+    """
+    Parse a raw ingredient string (e.g. '2 tablespoons butter (divided)', '1 1/2 cups flour')
+    into a structured dictionary with 'name', 'quantity', 'unit', and 'category'.
+    """
+    s = raw_str.strip()
+    if not s:
+        return {"name": "", "quantity": 1.0, "unit": "pieces", "category": "Pantry Staples"}
+
+    qty = 1.0
+    unicode_frac_pattern = r"^(\d+)?\s*([½¼¾⅓⅔⅛⅝⅞])"
+    match_unicode = re.match(unicode_frac_pattern, s)
+    if match_unicode:
+        whole_str = match_unicode.group(1)
+        frac_char = match_unicode.group(2)
+        whole_val = float(whole_str) if whole_str else 0.0
+        frac_val = UNICODE_FRACTIONS.get(frac_char, 0.0)
+        qty = whole_val + frac_val
+        s = s[match_unicode.end():].strip()
+    else:
+        mixed_match = re.match(r"^(\d+)\s*[- ]\s*(\d+)/(\d+)", s)
+        if mixed_match:
+            whole = int(mixed_match.group(1))
+            num = int(mixed_match.group(2))
+            denom = int(mixed_match.group(3))
+            qty = whole + (num / denom)
+            s = s[mixed_match.end():].strip()
+        else:
+            frac_match = re.match(r"^(\d+)/(\d+)", s)
+            if frac_match:
+                qty = int(frac_match.group(1)) / int(frac_match.group(2))
+                s = s[frac_match.end():].strip()
+            else:
+                num_match = re.match(r"^(\d+(?:\.\d+)?)", s)
+                if num_match:
+                    qty = float(num_match.group(1))
+                    s = s[num_match.end():].strip()
+
+    unit_mappings = [
+        (r"\b(?:tablespoon|tablespoons|tbsp)\b", "tbsp", 1.0),
+        (r"\b(?:teaspoon|teaspoons|tsp)\b", "tbsp", 1.0/3.0),
+        (r"\b(?:cup|cups)\b", "cups", 1.0),
+        (r"\b(?:gram|grams|g)\b", "g", 1.0),
+        (r"\b(?:milliliter|milliliters|ml)\b", "ml", 1.0),
+        (r"\b(?:slice|slices)\b", "slices", 1.0),
+        (r"\b(?:pack|packs|package|packages|can|cans)\b", "pack", 1.0),
+        (r"\b(?:bottle|bottles)\b", "bottle", 1.0),
+        (r"\b(?:bunch|bunches)\b", "bunch", 1.0),
+    ]
+    
+    matched_unit = "pieces"
+    unit_scale = 1.0
+    
+    s_lower = s.lower()
+    for pattern, std_unit, scale in unit_mappings:
+        match = re.search(pattern, s_lower)
+        if match:
+            matched_unit = std_unit
+            unit_scale = scale
+            start, end = match.span()
+            s = (s[:start] + " " + s[end:]).strip()
+            break
+            
+    qty = round(qty * unit_scale, 2)
+
+    s = re.sub(r"\([^)]*\)", "", s)
+    s = s.split(",")[0]
+    
+    name = re.sub(r"\s+", " ", s).strip()
+    name = name.strip(".-*, ")
+    name = re.sub(r"^(?:large|medium|small|optional|fresh|cold|warm)\s+", "", name, flags=re.IGNORECASE).strip()
+    name = name.title()
+    
+    if not name:
+        name = raw_str.strip()
+
+    category = "Pantry Staples"
+    name_lower = name.lower()
+    if any(k in name_lower for k in ["chicken", "beef", "pork", "steak", "meat", "turkey", "salmon", "shrimp", "fish", "tuna", "egg"]):
+        category = "Meats & Proteins"
+    elif any(k in name_lower for k in ["tomato", "onion", "garlic", "spinach", "lettuce", "pepper", "basil", "parsley", "potato", "carrot", "broccoli", "cucumber", "celery", "cabbage"]):
+        category = "Vegetables"
+    elif any(k in name_lower for k in ["apple", "banana", "orange", "lemon", "lime", "berry", "strawberry", "blueberry", "grape", "avocado"]):
+        category = "Fruits"
+    elif any(k in name_lower for k in ["milk", "cheese", "butter", "yogurt", "cream"]):
+        category = "Dairy"
+    elif any(k in name_lower for k in ["flour", "pasta", "bread", "rice", "noodle", "grain", "oats"]):
+        category = "Grains"
+        
+    return {
+        "name": name,
+        "quantity": qty,
+        "unit": matched_unit,
+        "category": category
+    }
+
 @app.post("/api/recipes/scrape-external-link")
 def scrape_external_link(payload: ScrapeRecipeRequest):
     try:
@@ -314,12 +422,7 @@ def scrape_external_link(payload: ScrapeRecipeRequest):
         ingredients = []
         for ing in raw_ingredients:
             if ing.strip():
-                ingredients.append({
-                    "name": ing.strip(),
-                    "quantity": 1.0,
-                    "unit": "pieces",
-                    "category": "Pantry Staples"
-                })
+                ingredients.append(parse_ingredient_string(ing))
         
         instructions = scraper.instructions_list()
         if not instructions:

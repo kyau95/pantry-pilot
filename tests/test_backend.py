@@ -202,8 +202,44 @@ class TestPantryPilotBackend(unittest.TestCase):
         self.assertEqual(recipe["prepTime"], 15)
         self.assertEqual(recipe["cookTime"], 45)
         self.assertEqual(len(recipe["ingredients"]), 2)
-        self.assertEqual(recipe["ingredients"][0]["name"], "1 cup Ricotta")
+        self.assertEqual(recipe["ingredients"][0]["name"], "Ricotta")
+        self.assertEqual(recipe["ingredients"][0]["quantity"], 1.0)
+        self.assertEqual(recipe["ingredients"][0]["unit"], "cups")
+        self.assertEqual(recipe["ingredients"][1]["name"], "Sheets Pasta")
+        self.assertEqual(recipe["ingredients"][1]["quantity"], 2.0)
+        self.assertEqual(recipe["ingredients"][1]["unit"], "pieces")
         self.assertEqual(recipe["instructions"], ["Boil pasta", "Bake lasagna"])
+
+    def test_ingredient_string_parser(self):
+        """
+        Verify that parse_ingredient_string correctly extracts quantities, standard units,
+        and clean title-cased names.
+        """
+        from main import parse_ingredient_string
+        
+        res1 = parse_ingredient_string("2 tablespoons butter (divided)")
+        self.assertEqual(res1["quantity"], 2.0)
+        self.assertEqual(res1["unit"], "tbsp")
+        self.assertEqual(res1["name"], "Butter")
+        self.assertEqual(res1["category"], "Dairy")
+        
+        res2 = parse_ingredient_string("1 ½ cups all-purpose flour")
+        self.assertEqual(res2["quantity"], 1.5)
+        self.assertEqual(res2["unit"], "cups")
+        self.assertEqual(res2["name"], "All-Purpose Flour")
+        self.assertEqual(res2["category"], "Grains")
+        
+        res3 = parse_ingredient_string("3 teaspoons white sugar")
+        self.assertEqual(res3["quantity"], 1.0)
+        self.assertEqual(res3["unit"], "tbsp")
+        self.assertEqual(res3["name"], "White Sugar")
+        self.assertEqual(res3["category"], "Pantry Staples")
+        
+        res4 = parse_ingredient_string("1 large chicken breast (about ¾ lb.)")
+        self.assertEqual(res4["quantity"], 1.0)
+        self.assertEqual(res4["unit"], "pieces")
+        self.assertEqual(res4["name"], "Chicken Breast")
+        self.assertEqual(res4["category"], "Meats & Proteins")
 
     def test_live_server_endpoints(self):
         """
