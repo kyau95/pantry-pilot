@@ -1,4 +1,6 @@
 import os
+import uuid
+from recipe_scrapers import scrape_me
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -76,6 +78,9 @@ class CustomRecipePayload(BaseModel):
     ingredients: list[dict]
     instructions: list[str]
     dietaryTags: list[str] = []
+
+class ScrapeRecipeRequest(BaseModel):
+    url: str
 
 # --- API Routes ---
 
@@ -269,6 +274,88 @@ def delete_recipe(recipe_id: str):
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/recipes/scrape-external-link")
+def scrape_external_link(payload: ScrapeRecipeRequest):
+    try:
+        url = payload.url.strip()
+        if not url.startswith("http://") and not url.startswith("https://"):
+            raise HTTPException(status_code=400, detail="Invalid URL format. Must start with http:// or https://")
+        
+        # Scrape using wild_mode=True to fall back to generic schema parsing
+        scraper = scrape_me(url, wild_mode=True)
+        
+        title = scraper.title()
+        if not title:
+            raise Exception("No recipe title could be extracted from this URL.")
+            
+        description = scraper.description() or f"Imported from {url}"
+        prep_time = scraper.prep_time() or 0
+        cook_time = scraper.cook_time() or 0
+        
+        category = "Imported"
+        difficulty = "Medium"
+        
+        image = scraper.image()
+        if not image or not (image.startswith("http://") or image.startswith("https://")):
+            image = "https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=600"
+            
+        raw_ingredients = scraper.ingredients()
+        ingredients = []
+        for ing in raw_ingredients:
+            if ing.strip():
+                ingredients.append({
+                    "name": ing.strip(),
+                    "quantity": 1.0,
+                    "unit": "pieces",
+                    "category": "Pantry Staples"
+                })
+        
+        instructions = scraper.instructions_list()
+        if not instructions:
+            instr_str = scraper.instructions()
+            if instr_str:
+                instructions = [step.strip() for step in instr_str.split("\n") if step.strip()]
+            else:
+                instructions = ["Follow instructions on the source website."]
+                
+        recipe_id = f"imported-{uuid.uuid4().hex[:8]}"
+        dietary_tags = []
+        
+        add_custom_recipe_db(
+            recipe_id,
+            title,
+            description,
+            prep_time,
+            cook_time,
+            difficulty,
+            category,
+            image,
+            ingredients,
+            instructions,
+            dietary_tags
+        )
+        
+        return {
+            "status": "success",
+            "recipe": {
+                "id": recipe_id,
+                "name": title,
+                "description": description,
+                "prepTime": prep_time,
+                "cookTime": cook_time,
+                "difficulty": difficulty,
+                "category": category,
+                "image": image,
+                "ingredients": ingredients,
+                "instructions": instructions,
+                "dietaryTags": dietary_tags,
+                "isCustom": True
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to scrape recipe: {str(e)}")
+
 
 if __name__ == "__main__":
     import uvicorn

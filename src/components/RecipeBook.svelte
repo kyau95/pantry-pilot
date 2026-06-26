@@ -1,7 +1,7 @@
 <script lang="ts">
   import { pantryStore } from '../stores/pantryStore.svelte';
   import { type Recipe } from '../utils/recipeData';
-  import { Search, Clock, ChefHat, Check, AlertTriangle, Plus, X, ShoppingBag, Trash2 } from '@lucide/svelte';
+  import { Search, Clock, ChefHat, Check, AlertTriangle, Plus, X, ShoppingBag, Trash2, Link } from '@lucide/svelte';
 
   // Search and filter state
   let searchQuery = $state('');
@@ -9,6 +9,12 @@
   let selectedDifficulty = $state('All');
   let selectedRecipe = $state<Recipe | null>(null);
   let cookedMessage = $state<string | null>(null);
+
+  // Link Import State
+  let isImportingLink = $state(false);
+  let importUrl = $state('');
+  let importLoading = $state(false);
+  let importError = $state<string | null>(null);
 
   // Dietary filter state
   let activeDietary = $state<string[]>([]);
@@ -252,6 +258,28 @@
     if (stats.missingTotal <= 2) return `Missing ${stats.missingTotal} Item${stats.missingTotal > 1 ? 's' : ''}`;
     return 'Missing 3+ Items';
   }
+
+  async function handleImportSubmit(e: SubmitEvent) {
+    e.preventDefault();
+    if (!importUrl.trim()) return;
+
+    importLoading = true;
+    importError = null;
+
+    try {
+      const imported = await pantryStore.importRecipeFromLink(importUrl.trim());
+      cookedMessage = `Successfully imported "${imported.name}"!`;
+      importUrl = '';
+      isImportingLink = false;
+      setTimeout(() => {
+        cookedMessage = null;
+      }, 4000);
+    } catch (err: any) {
+      importError = err.message || 'Failed to parse recipe from URL.';
+    } finally {
+      importLoading = false;
+    }
+  }
 </script>
 
 <div class="recipe-container">
@@ -270,10 +298,16 @@
       <h2>Gourmet Recipe Book</h2>
       <p class="subtitle">Match your scanned pantry items automatically with chef-curated recipes.</p>
     </div>
-    <button class="btn btn-emerald" onclick={() => isAddingCustom = true}>
-      <Plus size={16} />
-      <span>Add Custom Recipe</span>
-    </button>
+    <div class="header-actions">
+      <button class="btn btn-cyan" onclick={() => { isImportingLink = true; importError = null; }}>
+        <Link size={16} />
+        <span>Import from Link</span>
+      </button>
+      <button class="btn btn-emerald" onclick={() => isAddingCustom = true}>
+        <Plus size={16} />
+        <span>Add Custom Recipe</span>
+      </button>
+    </div>
   </div>
 
   <!-- Search and Filters Section -->
@@ -736,6 +770,56 @@
           <div class="modal-footer mt-4">
             <button type="submit" class="btn btn-emerald">Save Recipe</button>
             <button type="button" class="btn btn-secondary" onclick={resetCustomForm}>Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  {/if}
+
+  <!-- Import Recipe Link Modal -->
+  {#if isImportingLink}
+    <div class="modal-overlay" onclick={() => { if (!importLoading) isImportingLink = false; }} role="presentation">
+      <div class="modal-content glass import-link-modal" onclick={(e) => e.stopPropagation()} role="presentation">
+        <button class="close-btn" onclick={() => isImportingLink = false} disabled={importLoading} aria-label="Close form">
+          <X size={20} />
+        </button>
+
+        <div class="modal-header-simple">
+          <h2>Import Recipe from Link</h2>
+          <p class="section-sub">Paste a recipe URL from any culinary site to automatically extract ingredients and steps.</p>
+        </div>
+
+        <form onsubmit={handleImportSubmit} class="modal-body-form">
+          <div class="form-group">
+            <label for="import-url">Recipe Link / URL</label>
+            <input 
+              type="url" 
+              id="import-url" 
+              placeholder="e.g. https://www.allrecipes.com/recipe/..." 
+              bind:value={importUrl}
+              required
+              disabled={importLoading}
+              class="form-input"
+            />
+          </div>
+
+          {#if importError}
+            <div class="error-banner mt-3">
+              <AlertTriangle size={16} />
+              <span>{importError}</span>
+            </div>
+          {/if}
+
+          <!-- Modal Footer Actions -->
+          <div class="modal-footer mt-4">
+            <button type="submit" class="btn btn-cyan" disabled={importLoading}>
+              {#if importLoading}
+                <span>Importing...</span>
+              {:else}
+                <span>Import Recipe</span>
+              {/if}
+            </button>
+            <button type="button" class="btn btn-secondary" onclick={() => isImportingLink = false} disabled={importLoading}>Cancel</button>
           </div>
         </form>
       </div>
@@ -1620,4 +1704,26 @@
   .mt-2 { margin-top: 0.5rem; }
   .mt-3 { margin-top: 0.75rem; }
   .mt-4 { margin-top: 1rem; }
+
+  .header-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  .import-link-modal {
+    max-width: 500px !important;
+  }
+
+  .error-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border-radius: 6px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    font-size: 0.85rem;
+  }
 </style>

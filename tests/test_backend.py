@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+import unittest.mock
 import json
 import base64
 import urllib.request
@@ -173,6 +174,35 @@ class TestPantryPilotBackend(unittest.TestCase):
         db.delete_custom_recipe_db("custom-egg")
         recipes = db.get_all_recipes()
         self.assertEqual(len(recipes), 8)
+
+    @unittest.mock.patch('main.scrape_me')
+    def test_scrape_external_link_endpoint(self, mock_scrape_me):
+        """
+        Test the scrape_external_link endpoint with a mocked scraper.
+        """
+        mock_scraper = unittest.mock.MagicMock()
+        mock_scraper.title.return_value = "Mocked Lasagna"
+        mock_scraper.description.return_value = "Tasty lasagna"
+        mock_scraper.prep_time.return_value = 15
+        mock_scraper.cook_time.return_value = 45
+        mock_scraper.image.return_value = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600"
+        mock_scraper.ingredients.return_value = ["1 cup Ricotta", "2 sheets Pasta"]
+        mock_scraper.instructions_list.return_value = ["Boil pasta", "Bake lasagna"]
+        
+        mock_scrape_me.return_value = mock_scraper
+        
+        from main import scrape_external_link, ScrapeRecipeRequest
+        payload = ScrapeRecipeRequest(url="https://www.example.com/recipe/lasagna")
+        response = scrape_external_link(payload)
+        
+        self.assertEqual(response["status"], "success")
+        recipe = response["recipe"]
+        self.assertEqual(recipe["name"], "Mocked Lasagna")
+        self.assertEqual(recipe["prepTime"], 15)
+        self.assertEqual(recipe["cookTime"], 45)
+        self.assertEqual(len(recipe["ingredients"]), 2)
+        self.assertEqual(recipe["ingredients"][0]["name"], "1 cup Ricotta")
+        self.assertEqual(recipe["instructions"], ["Boil pasta", "Bake lasagna"])
 
     def test_live_server_endpoints(self):
         """

@@ -366,6 +366,26 @@ class PantryStore {
     // Sync to SQLite in the background
     this.apiCall(`/recipes/${id}`, 'DELETE');
   }
+
+  async importRecipeFromLink(url: string): Promise<Recipe> {
+    const res = await fetch(`${API_URL}/recipes/scrape-external-link`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.detail || 'Failed to import recipe from link');
+    }
+    
+    const data = await res.json();
+    const recipe: Recipe = data.recipe;
+    
+    this.recipes.push(recipe);
+    this.saveLocal();
+    return recipe;
+  }
 }
 
 export const pantryStore = new PantryStore();
