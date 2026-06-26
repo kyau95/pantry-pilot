@@ -227,6 +227,12 @@
                   <Calendar size={12} />
                   <span>Added {formatDate(item.createdAt)}</span>
                 </div>
+                {#if item.useByDate}
+                  <div class="meta-item">
+                    <Calendar size={12} />
+                    <span>Expires {formatDate(item.useByDate)}</span>
+                  </div>
+                {/if}
                 <span class="stock-badge {getStockStatus(item).class}">
                   {getStockStatus(item).label}
                 </span>
