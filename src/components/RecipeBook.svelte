@@ -779,8 +779,8 @@
   <!-- Import Recipe Link Modal -->
   {#if isImportingLink}
     <div class="modal-overlay" onclick={() => { if (!importLoading) isImportingLink = false; }} role="presentation">
-      <div class="modal-content glass import-link-modal" onclick={(e) => e.stopPropagation()} role="presentation">
-        <button class="close-btn" onclick={() => isImportingLink = false} disabled={importLoading} aria-label="Close form">
+      <form onsubmit={handleImportSubmit} class="modal-content glass import-link-modal" onclick={(e) => e.stopPropagation()} role="presentation">
+        <button type="button" class="close-btn" onclick={() => isImportingLink = false} disabled={importLoading} aria-label="Close form">
           <X size={20} />
         </button>
 
@@ -789,7 +789,7 @@
           <p class="section-sub">Paste a recipe URL from any culinary site to automatically extract ingredients and steps.</p>
         </div>
 
-        <form onsubmit={handleImportSubmit} class="modal-body-form">
+        <div class="modal-body-form">
           <div class="form-group">
             <label for="import-url">Recipe Link / URL</label>
             <input 
@@ -804,25 +804,25 @@
           </div>
 
           {#if importError}
-            <div class="error-banner mt-3">
+            <div class="error-banner">
               <AlertTriangle size={16} />
               <span>{importError}</span>
             </div>
           {/if}
+        </div>
 
-          <!-- Modal Footer Actions -->
-          <div class="modal-footer mt-4">
-            <button type="submit" class="btn btn-cyan" disabled={importLoading}>
-              {#if importLoading}
-                <span>Importing...</span>
-              {:else}
-                <span>Import Recipe</span>
-              {/if}
-            </button>
-            <button type="button" class="btn btn-secondary" onclick={() => isImportingLink = false} disabled={importLoading}>Cancel</button>
-          </div>
-        </form>
-      </div>
+        <!-- Modal Footer Actions -->
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-cyan" disabled={importLoading}>
+            {#if importLoading}
+              <span>Importing...</span>
+            {:else}
+              <span>Import Recipe</span>
+            {/if}
+          </button>
+          <button type="button" class="btn btn-secondary" onclick={() => isImportingLink = false} disabled={importLoading}>Cancel</button>
+        </div>
+      </form>
     </div>
   {/if}
 </div>
@@ -1725,5 +1725,12 @@
     border: 1px solid rgba(239, 68, 68, 0.2);
     color: #ef4444;
     font-size: 0.85rem;
+  }
+
+  .modal-body-form {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
   }
 </style>
