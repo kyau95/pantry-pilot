@@ -175,8 +175,9 @@ class TestPantryPilotBackend(unittest.TestCase):
         recipes = db.get_all_recipes()
         self.assertEqual(len(recipes), 8)
 
-    @unittest.mock.patch('main.scrape_me')
-    def test_scrape_external_link_endpoint(self, mock_scrape_me):
+    @unittest.mock.patch('urllib.request.urlopen')
+    @unittest.mock.patch('main.scrape_html')
+    def test_scrape_external_link_endpoint(self, mock_scrape_html, mock_urlopen):
         """
         Test the scrape_external_link endpoint with a mocked scraper.
         """
@@ -189,7 +190,7 @@ class TestPantryPilotBackend(unittest.TestCase):
         mock_scraper.ingredients.return_value = ["1 cup Ricotta", "2 sheets Pasta"]
         mock_scraper.instructions_list.return_value = ["Boil pasta", "Bake lasagna"]
         
-        mock_scrape_me.return_value = mock_scraper
+        mock_scrape_html.return_value = mock_scraper
         
         from main import scrape_external_link, ScrapeRecipeRequest
         payload = ScrapeRecipeRequest(url="https://www.example.com/recipe/lasagna")

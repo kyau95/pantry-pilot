@@ -1,6 +1,6 @@
 import os
 import uuid
-from recipe_scrapers import scrape_me
+from recipe_scrapers import scrape_html, HEADERS
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -282,8 +282,18 @@ def scrape_external_link(payload: ScrapeRecipeRequest):
         if not url.startswith("http://") and not url.startswith("https://"):
             raise HTTPException(status_code=400, detail="Invalid URL format. Must start with http:// or https://")
         
-        # Scrape using wild_mode=True to fall back to generic schema parsing
-        scraper = scrape_me(url, wild_mode=True)
+        # Fetch HTML using urllib with recipe_scrapers HEADERS
+        import urllib.request
+        
+        req = urllib.request.Request(url, headers=HEADERS)
+        try:
+            with urllib.request.urlopen(req, timeout=10.0) as response:
+                html_content = response.read().decode("utf-8", errors="ignore")
+        except Exception:
+            import requests
+            html_content = requests.get(url, headers=HEADERS, timeout=10.0).text
+            
+        scraper = scrape_html(html_content, org_url=url, supported_only=False)
         
         title = scraper.title()
         if not title:
