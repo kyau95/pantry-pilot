@@ -327,24 +327,16 @@ def add_or_update_pantry_item(item_id, name, quantity, unit, category, use_by_da
     created_at = datetime.now().isoformat()
     
     cursor.execute(
-        "SELECT id, quantity, use_by_date FROM pantry_items WHERE LOWER(name) = ? AND LOWER(unit) = ?", 
-        (name_clean.lower(), unit_clean.lower())
+        "SELECT id, quantity FROM pantry_items WHERE LOWER(name) = ? AND LOWER(unit) = ? AND SUBSTR(use_by_date, 1, 10) = SUBSTR(?, 1, 10)", 
+        (name_clean.lower(), unit_clean.lower(), use_by_date)
     )
     existing = cursor.fetchone()
     
     if existing:
         new_qty = existing["quantity"] + quantity
-        existing_expiry = existing["use_by_date"]
-        final_expiry = existing_expiry
-        try:
-            if datetime.fromisoformat(use_by_date) < datetime.fromisoformat(existing_expiry):
-                final_expiry = use_by_date
-        except Exception:
-            pass
-            
         cursor.execute(
-            "UPDATE pantry_items SET quantity = ?, use_by_date = ? WHERE id = ?",
-            (new_qty, final_expiry, existing["id"])
+            "UPDATE pantry_items SET quantity = ? WHERE id = ?",
+            (new_qty, existing["id"])
         )
     else:
         cursor.execute(
@@ -511,8 +503,8 @@ def purchase_checked_items_db():
             cat = r["category"]
             
             cursor.execute(
-                "SELECT id, quantity, use_by_date FROM pantry_items WHERE LOWER(name) = ? AND LOWER(unit) = ?", 
-                (name_clean.lower(), unit_clean.lower())
+                "SELECT id, quantity FROM pantry_items WHERE LOWER(name) = ? AND LOWER(unit) = ? AND SUBSTR(use_by_date, 1, 10) = SUBSTR(?, 1, 10)", 
+                (name_clean.lower(), unit_clean.lower(), default_expiry)
             )
             existing_pantry = cursor.fetchone()
             

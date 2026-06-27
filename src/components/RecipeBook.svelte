@@ -15,6 +15,7 @@
   let importUrl = $state('');
   let importLoading = $state(false);
   let importError = $state<string | null>(null);
+  let stagedRecipe = $state<Recipe | null>(null);
 
   // Dietary filter state
   let activeDietary = $state<string[]>([]);
@@ -246,6 +247,15 @@
     }
   }
 
+  function handleConfirmDelete(id: string, closeDetails: boolean = false) {
+    if (confirm("Are you sure you want to delete this recipe? This action cannot be undone.")) {
+      pantryStore.deleteCustomRecipe(id);
+      if (closeDetails) {
+        selectedRecipe = null;
+      }
+    }
+  }
+
   function getMatchClass(percentage: number) {
     if (percentage === 100) return 'match-perfect';
     if (percentage >= 50) return 'match-partial';
@@ -268,16 +278,91 @@
 
     try {
       const imported = await pantryStore.importRecipeFromLink(importUrl.trim());
-      cookedMessage = `Successfully imported "${imported.name}"!`;
-      importUrl = '';
-      isImportingLink = false;
-      setTimeout(() => {
-        cookedMessage = null;
-      }, 4000);
+      stagedRecipe = imported;
     } catch (err: any) {
       importError = err.message || 'Failed to parse recipe from URL.';
     } finally {
       importLoading = false;
+    }
+  }
+
+  function addStagedIngredientRow() {
+    if (stagedRecipe) {
+      stagedRecipe.ingredients = [
+        ...stagedRecipe.ingredients,
+        { name: '', quantity: 1, unit: 'pieces', category: 'Vegetables' }
+      ];
+    }
+  }
+
+  function removeStagedIngredientRow(index: number) {
+    if (stagedRecipe) {
+      stagedRecipe.ingredients = stagedRecipe.ingredients.filter((_, i) => i !== index);
+    }
+  }
+
+  function addStagedInstructionRow() {
+    if (stagedRecipe) {
+      stagedRecipe.instructions = [
+        ...stagedRecipe.instructions,
+        ''
+      ];
+    }
+  }
+
+  function removeStagedInstructionRow(index: number) {
+    if (stagedRecipe) {
+      stagedRecipe.instructions = stagedRecipe.instructions.filter((_, i) => i !== index);
+    }
+  }
+
+  function handleSaveStagedRecipe(e: SubmitEvent) {
+    e.preventDefault();
+    if (!stagedRecipe) return;
+
+    const validIngredients = stagedRecipe.ingredients.filter(ing => ing.name.trim() !== '');
+    const validInstructions = stagedRecipe.instructions.filter(step => step.trim() !== '');
+
+    if (validIngredients.length === 0) {
+      alert('Please add at least one valid ingredient');
+      return;
+    }
+    if (validInstructions.length === 0) {
+      alert('Please add at least one instruction step');
+      return;
+    }
+
+    const finalizedRecipe: Recipe = {
+      ...stagedRecipe,
+      name: stagedRecipe.name.trim(),
+      description: stagedRecipe.description.trim(),
+      ingredients: validIngredients,
+      instructions: validInstructions
+    };
+
+    pantryStore.addCustomRecipe(finalizedRecipe);
+    cookedMessage = `Successfully saved "${finalizedRecipe.name}" to Cookbook!`;
+    
+    // Reset staged import state
+    stagedRecipe = null;
+    importUrl = '';
+    isImportingLink = false;
+    
+    setTimeout(() => {
+      cookedMessage = null;
+    }, 4000);
+  }
+
+  function handleCancelStaged() {
+    stagedRecipe = null;
+  }
+
+  function handleFormSubmit(e: SubmitEvent) {
+    e.preventDefault();
+    if (!stagedRecipe) {
+      handleImportSubmit(e);
+    } else {
+      handleSaveStagedRecipe(e);
     }
   }
 </script>
@@ -387,7 +472,7 @@
               {#if recipe.isCustom}
                 <button 
                   class="badge badge-delete" 
-                  onclick={(e) => { e.stopPropagation(); pantryStore.deleteCustomRecipe(recipe.id); }}
+                  onclick={(e) => { e.stopPropagation(); handleConfirmDelete(recipe.id); }}
                   title="Delete recipe"
                   aria-label="Delete recipe"
                 >
@@ -557,6 +642,12 @@
 
         <!-- Modal Action Footer -->
         <div class="modal-footer">
+          {#if selectedRecipe.isCustom}
+            <button class="btn btn-danger" onclick={() => handleConfirmDelete(selectedRecipe!.id, true)}>
+              <Trash2 size={16} />
+              <span>Delete Recipe</span>
+            </button>
+          {/if}
           {#if stats.canCook}
             <button class="btn btn-emerald" onclick={() => handleCook(selectedRecipe!.id, selectedRecipe!.name)}>
               <ChefHat size={18} />
@@ -778,50 +869,228 @@
 
   <!-- Import Recipe Link Modal -->
   {#if isImportingLink}
-    <div class="modal-overlay" onclick={() => { if (!importLoading) isImportingLink = false; }} role="presentation">
-      <form onsubmit={handleImportSubmit} class="modal-content glass import-link-modal" onclick={(e) => e.stopPropagation()} role="presentation">
-        <button type="button" class="close-btn" onclick={() => isImportingLink = false} disabled={importLoading} aria-label="Close form">
+    <div class="modal-overlay" onclick={() => { if (!importLoading && !stagedRecipe) isImportingLink = false; }} role="presentation">
+      <form onsubmit={handleFormSubmit} class="modal-content glass {stagedRecipe ? 'custom-recipe-modal' : 'import-link-modal'}" onclick={(e) => e.stopPropagation()} role="presentation">
+        <button type="button" class="close-btn" onclick={() => { stagedRecipe = null; isImportingLink = false; }} disabled={importLoading} aria-label="Close form">
           <X size={20} />
         </button>
 
-        <div class="modal-header-simple">
-          <h2>Import Recipe from Link</h2>
-          <p class="section-sub">Paste a recipe URL from any culinary site to automatically extract ingredients and steps.</p>
-        </div>
-
-        <div class="modal-body-form">
-          <div class="form-group">
-            <label for="import-url">Recipe Link / URL</label>
-            <input 
-              type="url" 
-              id="import-url" 
-              placeholder="e.g. https://www.allrecipes.com/recipe/..." 
-              bind:value={importUrl}
-              required
-              disabled={importLoading}
-              class="form-input"
-            />
+        {#if !stagedRecipe}
+          <div class="modal-header-simple">
+            <h2>Import Recipe from Link</h2>
+            <p class="section-sub">Paste a recipe URL from any culinary site to automatically extract ingredients and steps.</p>
           </div>
 
-          {#if importError}
-            <div class="error-banner">
-              <AlertTriangle size={16} />
-              <span>{importError}</span>
+          <div class="modal-body-form">
+            <div class="form-group">
+              <label for="import-url">Recipe Link / URL</label>
+              <input 
+                type="url" 
+                id="import-url" 
+                placeholder="e.g. https://www.allrecipes.com/recipe/..." 
+                bind:value={importUrl}
+                required
+                disabled={importLoading}
+                class="form-input"
+              />
             </div>
-          {/if}
-        </div>
 
-        <!-- Modal Footer Actions -->
-        <div class="modal-footer">
-          <button type="submit" class="btn btn-cyan" disabled={importLoading}>
-            {#if importLoading}
-              <span>Importing...</span>
-            {:else}
-              <span>Import Recipe</span>
+            {#if importError}
+              <div class="error-banner">
+                <AlertTriangle size={16} />
+                <span>{importError}</span>
+              </div>
             {/if}
-          </button>
-          <button type="button" class="btn btn-secondary" onclick={() => isImportingLink = false} disabled={importLoading}>Cancel</button>
-        </div>
+          </div>
+
+          <!-- Modal Footer Actions -->
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-cyan" disabled={importLoading}>
+              {#if importLoading}
+                <span>Importing...</span>
+              {:else}
+                <span>Import Recipe</span>
+              {/if}
+            </button>
+            <button type="button" class="btn btn-secondary" onclick={() => isImportingLink = false} disabled={importLoading}>Cancel</button>
+          </div>
+        {:else}
+          <div class="modal-header-simple">
+            <h2>Verify & Normalize Recipe</h2>
+            <p class="section-sub">Adjust parsed ingredients and steps. Original author comments are shown as reference guides.</p>
+          </div>
+
+          <div class="modal-body-scroll">
+            <!-- Basic Details -->
+            <div class="form-grid-three">
+              <div class="form-group flex-2">
+                <label for="staged-name">Recipe Name</label>
+                <input 
+                  type="text" 
+                  id="staged-name" 
+                  bind:value={stagedRecipe.name}
+                  required
+                  class="form-input"
+                />
+              </div>
+              <div class="form-group">
+                <label for="staged-img">Image URL</label>
+                <input 
+                  type="text" 
+                  id="staged-img" 
+                  bind:value={stagedRecipe.image}
+                  class="form-input"
+                />
+              </div>
+            </div>
+
+            <div class="form-grid-four mt-3">
+              <div class="form-group">
+                <label for="staged-prep">Prep Time (mins)</label>
+                <input 
+                  type="number" 
+                  id="staged-prep" 
+                  min="0" 
+                  bind:value={stagedRecipe.prepTime}
+                  required
+                  class="form-input"
+                />
+              </div>
+              <div class="form-group">
+                <label for="staged-cook">Cook Time (mins)</label>
+                <input 
+                  type="number" 
+                  id="staged-cook" 
+                  min="0" 
+                  bind:value={stagedRecipe.cookTime}
+                  required
+                  class="form-input"
+                />
+              </div>
+              <div class="form-group">
+                <label for="staged-difficulty">Difficulty</label>
+                <select id="staged-difficulty" bind:value={stagedRecipe.difficulty} class="form-select">
+                  <option value="Easy">Easy</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Hard">Hard</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="staged-category">Category</label>
+                <select id="staged-category" bind:value={stagedRecipe.category} class="form-select">
+                  <option value="Breakfast">Breakfast</option>
+                  <option value="Lunch">Lunch</option>
+                  <option value="Dinner">Dinner</option>
+                  <option value="Snack">Snack</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group mt-3">
+              <label for="staged-desc">Description</label>
+              <textarea 
+                id="staged-desc" 
+                rows="2"
+                bind:value={stagedRecipe.description}
+                class="form-textarea"
+              ></textarea>
+            </div>
+
+            <!-- Ingredients Section -->
+            <div class="ingredients-form-section mt-4">
+              <div class="section-title-row">
+                <h3>Staged Ingredients</h3>
+                <button type="button" class="btn btn-outline-cyan btn-sm" onclick={addStagedIngredientRow}>
+                  <Plus size={14} />
+                  <span>Add Ingredient</span>
+                </button>
+              </div>
+
+              <div class="dynamic-rows-container mt-2">
+                {#each stagedRecipe.ingredients as ing, idx}
+                  <div class="staged-row-wrapper mt-2">
+                    <div class="dynamic-row">
+                      <input 
+                        type="text" 
+                        placeholder="Ingredient name (e.g. Mushrooms)" 
+                        bind:value={ing.name}
+                        required
+                        class="form-input flex-2"
+                      />
+                      <input 
+                        type="number" 
+                        placeholder="Qty" 
+                        min="0.01" 
+                        step="any" 
+                        bind:value={ing.quantity}
+                        required
+                        class="form-input flex-05"
+                      />
+                      <select bind:value={ing.unit} class="form-select flex-1">
+                        {#each availableUnits as unit}
+                          <option value={unit}>{unit}</option>
+                        {/each}
+                      </select>
+                      <select bind:value={ing.category} class="form-select flex-1">
+                        {#each availableCategories as cat}
+                          <option value={cat}>{cat}</option>
+                        {/each}
+                      </select>
+                      {#if stagedRecipe.ingredients.length > 1}
+                        <button type="button" class="btn-delete-row" onclick={() => removeStagedIngredientRow(idx)} aria-label="Remove ingredient">
+                          <X size={16} />
+                        </button>
+                      {/if}
+                    </div>
+                    {#if ing.originalText}
+                      <div class="original-text-helper">
+                        <span class="helper-label">Original:</span>
+                        <span class="helper-content">"{ing.originalText}"</span>
+                      </div>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
+            </div>
+
+            <!-- Instructions Section -->
+            <div class="instructions-form-section mt-4">
+              <div class="section-title-row">
+                <h3>Cooking Instructions</h3>
+                <button type="button" class="btn btn-outline-cyan btn-sm" onclick={addStagedInstructionRow}>
+                  <Plus size={14} />
+                  <span>Add Step</span>
+                </button>
+              </div>
+
+              <div class="dynamic-rows-container mt-2">
+                {#each stagedRecipe.instructions as step, idx}
+                  <div class="dynamic-row">
+                    <span class="step-label">Step {idx + 1}</span>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. Boil water and add salt." 
+                      bind:value={stagedRecipe.instructions[idx]}
+                      required
+                      class="form-input flex-2"
+                    />
+                    {#if stagedRecipe.instructions.length > 1}
+                      <button type="button" class="btn-delete-row" onclick={() => removeStagedInstructionRow(idx)} aria-label="Remove step">
+                        <X size={16} />
+                      </button>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
+            </div>
+          </div>
+
+          <!-- Modal Footer Actions -->
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-cyan">Save to Cookbook</button>
+            <button type="button" class="btn btn-secondary" onclick={handleCancelStaged}>Back</button>
+          </div>
+        {/if}
       </form>
     </div>
   {/if}
@@ -1732,5 +2001,33 @@
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+  }
+
+  .original-text-helper {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    margin-top: 0.25rem;
+    padding-left: 0.5rem;
+  }
+
+  .helper-label {
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.65rem;
+    color: var(--color-cyan);
+    letter-spacing: 0.05em;
+  }
+
+  .helper-content {
+    font-style: italic;
+  }
+
+  .staged-row-wrapper {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
   }
 </style>

@@ -144,10 +144,6 @@ class PantryStore {
   addPantryItem(name: string, quantity: number, unit: string, category: string, useByDate?: string) {
     if (!name.trim()) return;
     
-    const existingIndex = this.pantryItems.findIndex(
-      i => i.name.toLowerCase() === name.trim().toLowerCase() && i.unit.toLowerCase() === unit.trim().toLowerCase()
-    );
-
     // Default expiration date: 7 days from now
     let expiry = useByDate;
     if (!expiry) {
@@ -156,14 +152,17 @@ class PantryStore {
       expiry = d.toISOString();
     }
 
+    const cleanExpiry = expiry.substring(0, 10);
+    const existingIndex = this.pantryItems.findIndex(
+      i => i.name.toLowerCase() === name.trim().toLowerCase() && 
+           i.unit.toLowerCase() === unit.trim().toLowerCase() &&
+           i.useByDate.substring(0, 10) === cleanExpiry
+    );
+
     let itemId = Math.random().toString(36).substring(2, 9);
 
     if (existingIndex > -1) {
       this.pantryItems[existingIndex].quantity += quantity;
-      // Keep the earlier expiration date
-      if (new Date(expiry) < new Date(this.pantryItems[existingIndex].useByDate)) {
-        this.pantryItems[existingIndex].useByDate = expiry;
-      }
       itemId = this.pantryItems[existingIndex].id;
       expiry = this.pantryItems[existingIndex].useByDate;
     } else {
@@ -380,11 +379,7 @@ class PantryStore {
     }
     
     const data = await res.json();
-    const recipe: Recipe = data.recipe;
-    
-    this.recipes.push(recipe);
-    this.saveLocal();
-    return recipe;
+    return data.recipe;
   }
 }
 

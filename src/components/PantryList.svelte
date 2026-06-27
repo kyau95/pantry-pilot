@@ -1,7 +1,7 @@
 <script lang="ts">
   import { pantryStore } from '../stores/pantryStore.svelte';
   import { slide } from 'svelte/transition';
-  import { Search, Plus, Trash2, Calendar, ClipboardList, Filter } from '@lucide/svelte';
+  import { Search, Plus, Trash2, Calendar, ClipboardList, Filter, AlertTriangle, Clock } from '@lucide/svelte';
 
   // State
   let searchQuery = $state('');
@@ -35,47 +35,21 @@
 
   const units = ['pieces', 'g', 'ml', 'slices', 'tbsp', 'cups', 'pack', 'bottle', 'bunch'];
 
-  // Filtered items computed reactively, sorted by expiration (earliest first)
-  let filteredItems = $derived.by(() => {
-    let items = pantryStore.pantryItems;
-    
-    if (selectedCategory !== 'All') {
-      items = items.filter(item => item.category === selectedCategory);
-    }
-    
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
-      items = items.filter(item => item.name.toLowerCase().includes(query));
-    }
-    
-    // Sort by useByDate ascending, then by name
-    return [...items].sort((a, b) => {
-      const timeA = new Date(a.useByDate).getTime();
-      const timeB = new Date(b.useByDate).getTime();
-      if (timeA !== timeB) return timeA - timeB;
-      return a.name.localeCompare(b.name);
-    });
-  });
-
-  function handleSubmit(e: SubmitEvent) {
-    e.preventDefault();
-    if (!formName.trim()) return;
-
-    // Convert date string from input to ISO Date
-    const isoDate = new Date(formUseBy).toISOString();
-    pantryStore.addPantryItem(formName, formQty, formUnit, formCategory, isoDate);
-    
-    // Reset Form
-    formName = '';
-    formQty = 1;
-    formUnit = 'pieces';
-    formUseBy = getDefaultDateString(7);
-    isAddingManual = false;
+  interface PantryGroup {
+    name: string;
+    unit: string;
+    category: string;
+    totalQty: number;
+    statusClass: string;
+    statusLabel: string;
+    batches: Array<typeof pantryStore.pantryItems[0]>;
   }
 
-  function formatDate(isoString: string) {
-    const date = new Date(isoString);
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  let expiryFilter = $state<'All' | 'Expired' | 'ExpiringSoon'>('All');
+  let expandedGroups = $state<Record<string, boolean>>({});
+
+  function toggleGroup(key: string) {
+    expandedGroups[key] = !expandedGroups[key];
   }
 
   function getDaysRemaining(isoString: string) {
@@ -88,7 +62,128 @@
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   }
 
-  // Quick helper to suggest stock levels and expiration
+  let expiredCount = $derived.by(() => {
+    return pantryStore.pantryItems.filter(item => getDaysRemaining(item.useByDate) < 0).length;
+  });
+
+  let expiringSoonCount = $derived.by(() => {
+    return pantryStore.pantryItems.filter(item => {
+      const days = getDaysRemaining(item.useByDate);
+      return days >= 0 && days <= 2;
+    }).length;
+  });
+
+  let groupedItems = $derived.by(() => {
+    const rawItems = pantryStore.pantryItems;
+    const groupsMap = new Map<string, PantryGroup>();
+    
+    for (const item of rawItems) {
+      const key = `${item.name.toLowerCase()}||${item.unit.toLowerCase()}`;
+      if (!groupsMap.has(key)) {
+        groupsMap.set(key, {
+          name: item.name,
+          unit: item.unit,
+          category: item.category,
+          totalQty: 0,
+          statusClass: 'status-fresh',
+          statusLabel: 'Fresh',
+          batches: []
+        });
+      }
+      
+      const g = groupsMap.get(key)!;
+      g.batches.push(item);
+    }
+    
+    const groupsList: PantryGroup[] = [];
+    for (const g of groupsMap.values()) {
+      g.batches.sort((a, b) => new Date(a.useByDate).getTime() - new Date(b.useByDate).getTime());
+      g.totalQty = g.batches.reduce((sum, b) => sum + b.quantity, 0);
+      
+      let hasExpired = false;
+      let hasExpiring = false;
+      let minDaysRemaining = Infinity;
+      
+      for (const b of g.batches) {
+        const days = getDaysRemaining(b.useByDate);
+        if (days < minDaysRemaining) {
+          minDaysRemaining = days;
+        }
+        if (days < 0) {
+          hasExpired = true;
+        } else if (days <= 2) {
+          hasExpiring = true;
+        }
+      }
+      
+      if (hasExpired) {
+        g.statusClass = 'status-expired';
+        g.statusLabel = minDaysRemaining < 0 
+          ? `Expired (${Math.abs(minDaysRemaining)}d ago)` 
+          : 'Expired';
+      } else if (hasExpiring) {
+        g.statusClass = 'status-expiring';
+        g.statusLabel = minDaysRemaining === 0 
+          ? 'Expires Today' 
+          : `Expires in ${minDaysRemaining}d`;
+      } else {
+        g.statusClass = 'status-fresh';
+        g.statusLabel = 'Fresh';
+      }
+      
+      groupsList.push(g);
+    }
+    
+    let filtered = groupsList;
+    
+    if (selectedCategory !== 'All') {
+      filtered = filtered.filter(g => g.category === selectedCategory);
+    }
+    
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(g => g.name.toLowerCase().includes(q));
+    }
+    
+    if (expiryFilter === 'Expired') {
+      filtered = filtered.filter(g => g.statusClass === 'status-expired');
+    } else if (expiryFilter === 'ExpiringSoon') {
+      filtered = filtered.filter(g => g.statusClass === 'status-expiring');
+    }
+    
+    const priority = {
+      'status-expired': 0,
+      'status-expiring': 1,
+      'status-fresh': 2
+    };
+    
+    return filtered.sort((a, b) => {
+      const prioA = priority[a.statusClass as keyof typeof priority] ?? 2;
+      const prioB = priority[b.statusClass as keyof typeof priority] ?? 2;
+      if (prioA !== prioB) return prioA - prioB;
+      return a.name.localeCompare(b.name);
+    });
+  });
+
+  function handleSubmit(e: SubmitEvent) {
+    e.preventDefault();
+    if (!formName.trim()) return;
+
+    const isoDate = new Date(formUseBy).toISOString();
+    pantryStore.addPantryItem(formName, formQty, formUnit, formCategory, isoDate);
+    
+    formName = '';
+    formQty = 1;
+    formUnit = 'pieces';
+    formUseBy = getDefaultDateString(7);
+    isAddingManual = false;
+  }
+
+  function formatDate(isoString: string) {
+    const date = new Date(isoString);
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }
+
   function getStockStatus(item: typeof pantryStore.pantryItems[0]) {
     const daysRemaining = getDaysRemaining(item.useByDate);
     if (daysRemaining < 0) {
@@ -97,7 +192,7 @@
     if (daysRemaining === 0) {
       return { label: 'Expires Today', class: 'status-expired' };
     }
-    if (daysRemaining <= 3) {
+    if (daysRemaining <= 2) {
       return { label: `Expires in ${daysRemaining}d`, class: 'status-expiring' };
     }
     if (item.quantity <= 2 && (item.unit === 'pieces' || item.unit === 'slices')) {
@@ -142,6 +237,44 @@
         {/each}
       </div>
     </div>
+
+    <!-- Expiry Alert Dashboard Banner -->
+    {#if expiredCount > 0 || expiringSoonCount > 0}
+      <div class="expiry-dashboard-banner mt-3 mb-1">
+        {#if expiredCount > 0}
+          <div class="alert-box expired-alert">
+            <AlertTriangle size={18} />
+            <div class="alert-content">
+              <strong>{expiredCount} Item(s) Expired!</strong>
+              <span>Discard spoiled items to keep your pantry fresh.</span>
+            </div>
+            <button 
+              type="button" 
+              class="alert-action-btn" 
+              onclick={() => expiryFilter = expiryFilter === 'Expired' ? 'All' : 'Expired'}
+            >
+              {expiryFilter === 'Expired' ? 'Show All' : 'Filter Expired'}
+            </button>
+          </div>
+        {/if}
+        {#if expiringSoonCount > 0}
+          <div class="alert-box expiring-alert">
+            <Clock size={18} />
+            <div class="alert-content">
+              <strong>{expiringSoonCount} Item(s) Expiring Soon!</strong>
+              <span>Use them in recipes soon to prevent food waste.</span>
+            </div>
+            <button 
+              type="button" 
+              class="alert-action-btn" 
+              onclick={() => expiryFilter = expiryFilter === 'ExpiringSoon' ? 'All' : 'ExpiringSoon'}
+            >
+              {expiryFilter === 'ExpiringSoon' ? 'Show All' : 'Filter Expiring'}
+            </button>
+          </div>
+        {/if}
+      </div>
+    {/if}
 
     <!-- Manual Adding Form (Collapsible) -->
     {#if isAddingManual}
@@ -212,74 +345,109 @@
       </form>
     {/if}
 
-    <!-- Inventory List -->
-    {#if filteredItems.length > 0}
+    <!-- Inventory List (Grouped Collapsible Batches) -->
+    {#if groupedItems.length > 0}
       <div class="inventory-grid">
-        {#each filteredItems as item (item.id)}
-          <div class="pantry-card glass" transition:slide>
-            <div class="card-left">
-              <div class="pantry-details">
-                <span class="pantry-name">{item.name}</span>
-                <span class="pantry-cat">{item.category}</span>
-              </div>
-              <div class="pantry-meta">
-                <div class="meta-item">
-                  <Calendar size={12} />
-                  <span>Added {formatDate(item.createdAt)}</span>
+        {#each groupedItems as g (`${g.name.toLowerCase()}||${g.unit.toLowerCase()}`)}
+          {@const key = `${g.name.toLowerCase()}||${g.unit.toLowerCase()}`}
+          {@const isExpanded = expandedGroups[key]}
+          <div class="pantry-group-card glass {isExpanded ? 'expanded' : ''}" transition:slide>
+            <div class="group-header" onclick={() => toggleGroup(key)} role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && toggleGroup(key)}>
+              <div class="group-header-left">
+                <div class="chevron-icon {isExpanded ? 'open' : ''}">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </div>
-                {#if item.useByDate}
-                  <div class="meta-item">
-                    <Calendar size={12} />
-                    <span>Expires {formatDate(item.useByDate)}</span>
-                  </div>
-                {/if}
-                <span class="stock-badge {getStockStatus(item).class}">
-                  {getStockStatus(item).label}
+                <div class="pantry-details">
+                  <span class="pantry-name">{g.name}</span>
+                  <span class="pantry-cat">{g.category}</span>
+                </div>
+              </div>
+
+              <div class="group-header-right">
+                <span class="stock-badge {g.statusClass}">{g.statusLabel}</span>
+                <span class="total-qty-badge">
+                  {g.totalQty} {g.unit}
                 </span>
               </div>
             </div>
 
-            <!-- Quantity adjusters and delete -->
-            <div class="card-right">
-              <div class="qty-adjuster">
-                <button 
-                  onclick={() => pantryStore.updatePantryQuantity(item.id, item.quantity - (item.unit === 'g' || item.unit === 'ml' ? 50 : 1))} 
-                  class="qty-btn"
-                  aria-label="Decrease quantity"
-                >-</button>
-                <input 
-                  type="number"
-                  value={item.quantity}
-                  oninput={(e) => {
-                    const target = e.target as HTMLInputElement;
-                    if (target.value === '') return;
-                    const val = parseFloat(target.value);
-                    if (!isNaN(val) && val >= 0) {
-                      pantryStore.updatePantryQuantity(item.id, val);
-                    }
-                  }}
-                  onblur={(e) => {
-                    (e.target as HTMLInputElement).value = String(item.quantity);
-                  }}
-                  class="qty-input"
-                  min="0"
-                  step="any"
-                />
-                <span class="qty-unit">{item.unit}</span>
-                <button 
-                  onclick={() => pantryStore.updatePantryQuantity(item.id, item.quantity + (item.unit === 'g' || item.unit === 'ml' ? 50 : 1))} 
-                  class="qty-btn"
-                  aria-label="Increase quantity"
-                >+</button>
+            {#if isExpanded}
+              <div class="batches-section" transition:slide>
+                <div class="batches-header-row">
+                  <span>Batch Expiration</span>
+                  <span>Added On</span>
+                  <span>Quantity</span>
+                  <span class="text-center">Actions</span>
+                </div>
+                <div class="batches-list">
+                  {#each g.batches as batch (batch.id)}
+                    <div class="batch-row">
+                      <div class="batch-date-col">
+                        <span class="batch-expiry-date">{formatDate(batch.useByDate)}</span>
+                        <span class="batch-badge {getStockStatus(batch).class}">
+                          {getStockStatus(batch).label}
+                        </span>
+                      </div>
+                      
+                      <div class="batch-added-col">
+                        <span class="batch-added-date">{formatDate(batch.createdAt)}</span>
+                      </div>
+                      
+                      <div class="batch-qty-col">
+                        <div class="qty-adjuster">
+                          <button 
+                            type="button"
+                            onclick={() => pantryStore.updatePantryQuantity(batch.id, batch.quantity - (batch.unit === 'g' || batch.unit === 'ml' ? 50 : 1))} 
+                            class="qty-btn"
+                            aria-label="Decrease quantity"
+                          >-</button>
+                          <input 
+                            type="number"
+                            value={batch.quantity}
+                            oninput={(e) => {
+                              const target = e.target as HTMLInputElement;
+                              if (target.value === '') return;
+                              const val = parseFloat(target.value);
+                              if (!isNaN(val) && val >= 0) {
+                                pantryStore.updatePantryQuantity(batch.id, val);
+                              }
+                            }}
+                            onblur={(e) => {
+                              (e.target as HTMLInputElement).value = String(batch.quantity);
+                            }}
+                            class="qty-input"
+                            min="0"
+                            step="any"
+                          />
+                          <span class="qty-unit">{batch.unit}</span>
+                          <button 
+                            type="button"
+                            onclick={() => pantryStore.updatePantryQuantity(batch.id, batch.quantity + (batch.unit === 'g' || batch.unit === 'ml' ? 50 : 1))} 
+                            class="qty-btn"
+                            aria-label="Increase quantity"
+                          >+</button>
+                        </div>
+                      </div>
+                      
+                      <div class="batch-actions-col text-center">
+                        <button 
+                          type="button"
+                          class="delete-btn" 
+                          onclick={() => {
+                            if (confirm(`Delete this batch of ${g.name}?`)) {
+                              pantryStore.deletePantryItem(batch.id);
+                            }
+                          }} 
+                          aria-label="Delete batch"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  {/each}
+                </div>
               </div>
-              <button 
-                class="delete-btn" 
-                onclick={() => pantryStore.deletePantryItem(item.id)} 
-                aria-label="Delete item"
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
+            {/if}
           </div>
         {/each}
       </div>
@@ -465,21 +633,206 @@
     gap: 0.75rem;
   }
 
-  .pantry-card {
+  /* Group Card */
+  .pantry-group-card {
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.25s ease;
+  }
+
+  .pantry-group-card:hover {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .pantry-group-card.expanded {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  }
+
+  .group-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.875rem 1.25rem;
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .group-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .chevron-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+    transition: transform 0.2s ease;
+  }
+
+  .chevron-icon.open {
+    transform: rotate(90deg);
+    color: var(--color-emerald);
+  }
+
+  .group-header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .total-qty-badge {
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--color-text-light);
+    font-size: 0.8rem;
+    font-weight: 700;
+    min-width: 80px;
+    text-align: center;
+  }
+
+  /* Batches Section */
+  .batches-section {
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(0, 0, 0, 0.15);
+    padding: 0.75rem 1.25rem 1rem 1.25rem;
+  }
+
+  .batches-header-row {
+    display: grid;
+    grid-template-columns: 2fr 1.5fr 2.5fr 1fr;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    letter-spacing: 0.05em;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    margin-bottom: 0.5rem;
+  }
+
+  .batches-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .batch-row {
+    display: grid;
+    grid-template-columns: 2fr 1.5fr 2.5fr 1fr;
+    align-items: center;
+    font-size: 0.85rem;
+    padding: 0.35rem 0;
+  }
+
+  .batch-date-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    align-items: flex-start;
+  }
+
+  .batch-expiry-date {
+    font-weight: 600;
+    color: var(--color-text-light);
+  }
+
+  .batch-badge {
+    padding: 0px 4px;
+    border-radius: 3px;
+    font-size: 0.6rem;
+    font-weight: 700;
+  }
+
+  .batch-added-col {
+    color: var(--color-text-muted);
+  }
+
+  .batch-qty-col {
+    display: flex;
+    align-items: center;
+  }
+
+  .batch-actions-col {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .text-center {
+    text-align: center;
+  }
+
+  /* Expiry Dashboard alert banners */
+  .expiry-dashboard-banner {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+  }
+
+  .alert-box {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
     border-radius: 10px;
+    font-size: 0.85rem;
+    backdrop-filter: blur(8px);
     transition: all 0.2s ease;
   }
 
-  .pantry-card:hover {
-    background: rgba(255, 255, 255, 0.04);
-    border-color: rgba(255, 255, 255, 0.08);
-    transform: translateX(2px);
+  .expired-alert {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    color: #f87171;
+  }
+
+  .expiring-alert {
+    background: rgba(249, 115, 22, 0.08);
+    border: 1px solid rgba(249, 115, 22, 0.25);
+    color: #fb923c;
+  }
+
+  .alert-content {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    line-height: 1.35;
+  }
+
+  .alert-content strong {
+    font-weight: 700;
+  }
+
+  .alert-content span {
+    opacity: 0.85;
+    font-size: 0.8rem;
+  }
+
+  .alert-action-btn {
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: inherit;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .alert-action-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
   }
 
   .card-left {
@@ -490,8 +843,9 @@
 
   .pantry-details {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
   }
 
   .pantry-name {
@@ -523,10 +877,12 @@
   }
 
   .stock-badge {
-    padding: 1px 6px;
+    padding: 2px 8px;
     border-radius: 4px;
-    font-size: 0.65rem;
+    font-size: 0.7rem;
     font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
   }
 
   .status-fresh {

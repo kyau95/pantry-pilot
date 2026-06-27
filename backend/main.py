@@ -380,7 +380,8 @@ def parse_ingredient_string(raw_str: str) -> dict:
         "name": name,
         "quantity": qty,
         "unit": matched_unit,
-        "category": category
+        "category": category,
+        "originalText": raw_str.strip()
     }
 
 @app.post("/api/recipes/scrape-external-link")
@@ -434,20 +435,6 @@ def scrape_external_link(payload: ScrapeRecipeRequest):
                 
         recipe_id = f"imported-{uuid.uuid4().hex[:8]}"
         dietary_tags = []
-        
-        add_custom_recipe_db(
-            recipe_id,
-            title,
-            description,
-            prep_time,
-            cook_time,
-            difficulty,
-            category,
-            image,
-            ingredients,
-            instructions,
-            dietary_tags
-        )
         
         return {
             "status": "success",
