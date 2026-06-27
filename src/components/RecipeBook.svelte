@@ -247,12 +247,19 @@
     }
   }
 
-  function handleConfirmDelete(id: string, closeDetails: boolean = false) {
-    if (confirm("Are you sure you want to delete this recipe? This action cannot be undone.")) {
-      pantryStore.deleteCustomRecipe(id);
-      if (closeDetails) {
+  let recipeToDelete = $state<{ id: string; name: string; closeDetails: boolean } | null>(null);
+
+  function requestDeleteRecipe(id: string, name: string, closeDetails: boolean = false) {
+    recipeToDelete = { id, name, closeDetails };
+  }
+
+  function confirmDeleteRecipe() {
+    if (recipeToDelete) {
+      pantryStore.deleteCustomRecipe(recipeToDelete.id);
+      if (recipeToDelete.closeDetails) {
         selectedRecipe = null;
       }
+      recipeToDelete = null;
     }
   }
 
@@ -472,7 +479,7 @@
               {#if recipe.isCustom}
                 <button 
                   class="badge badge-delete" 
-                  onclick={(e) => { e.stopPropagation(); handleConfirmDelete(recipe.id); }}
+                  onclick={(e) => { e.stopPropagation(); requestDeleteRecipe(recipe.id, recipe.name); }}
                   title="Delete recipe"
                   aria-label="Delete recipe"
                 >
@@ -643,7 +650,7 @@
         <!-- Modal Action Footer -->
         <div class="modal-footer">
           {#if selectedRecipe.isCustom}
-            <button class="btn btn-danger" onclick={() => handleConfirmDelete(selectedRecipe!.id, true)}>
+            <button class="btn btn-danger" onclick={() => requestDeleteRecipe(selectedRecipe!.id, selectedRecipe!.name, true)}>
               <Trash2 size={16} />
               <span>Delete Recipe</span>
             </button>
@@ -1095,6 +1102,25 @@
     </div>
   {/if}
 </div>
+
+{#if recipeToDelete}
+  <div class="modal-overlay" onclick={() => recipeToDelete = null} role="presentation">
+    <div class="modal-content glass confirm-modal" onclick={(e) => e.stopPropagation()} role="presentation">
+      <div class="modal-body-form text-center p-6">
+        <div class="danger-icon-container">
+          <AlertTriangle size={36} />
+        </div>
+        <h3 class="confirm-title mt-3">Delete Recipe</h3>
+        <p class="confirm-message mt-2">Are you sure you want to delete the recipe <strong>{recipeToDelete.name}</strong>? This action will permanently remove it from your Cookbook.</p>
+        
+        <div class="confirm-actions mt-4">
+          <button class="btn btn-danger mr-2" onclick={confirmDeleteRecipe}>Delete Recipe</button>
+          <button class="btn btn-secondary" onclick={() => recipeToDelete = null}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   .recipe-container {

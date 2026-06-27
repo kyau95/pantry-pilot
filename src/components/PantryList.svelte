@@ -46,6 +46,18 @@
 
   let expiryFilter = $state<'All' | 'Expired' | 'ExpiringSoon'>('All');
   let expandedGroups = $state<Record<string, boolean>>({});
+  let itemToDelete = $state<{ id: string; name: string } | null>(null);
+
+  function requestDeleteBatch(id: string, name: string) {
+    itemToDelete = { id, name };
+  }
+
+  function confirmDeleteBatch() {
+    if (itemToDelete) {
+      pantryStore.deletePantryItem(itemToDelete.id);
+      itemToDelete = null;
+    }
+  }
 
   function toggleGroup(key: string) {
     expandedGroups = {
@@ -445,11 +457,7 @@
                           <button 
                             type="button"
                             class="delete-btn" 
-                            onclick={() => {
-                              if (confirm(`Delete this batch of ${g.name}?`)) {
-                                pantryStore.deletePantryItem(batch.id);
-                              }
-                            }} 
+                            onclick={() => requestDeleteBatch(batch.id, g.name)} 
                             aria-label="Delete batch"
                           >
                             <Trash2 size={16} />
@@ -473,6 +481,25 @@
     {/if}
   </div>
 </div>
+
+{#if itemToDelete}
+  <div class="modal-overlay" onclick={() => itemToDelete = null} role="presentation">
+    <div class="modal-content glass confirm-modal" onclick={(e) => e.stopPropagation()} role="presentation">
+      <div class="modal-body-form text-center p-6">
+        <div class="danger-icon-container">
+          <AlertTriangle size={36} />
+        </div>
+        <h3 class="confirm-title mt-3">Delete Pantry Batch</h3>
+        <p class="confirm-message mt-2">Are you sure you want to delete this batch of <strong>{itemToDelete.name}</strong> from your inventory? This cannot be undone.</p>
+        
+        <div class="confirm-actions mt-4">
+          <button class="btn btn-danger mr-2" onclick={confirmDeleteBatch}>Delete Batch</button>
+          <button class="btn btn-secondary" onclick={() => itemToDelete = null}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   .pantry-container {
