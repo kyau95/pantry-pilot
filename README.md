@@ -22,6 +22,8 @@ Pantry Pilot solves these problems by creating a unified, visual, and agentic as
 * **Automated Recipe Matching**: The cookbook scans the local pantry and dynamically calculates the match percentage for each recipe, indicating if you are `Ready to Cook` or showing the exact number of missing items.
 * **Automatic Inventory Deductions**: When a user cooks a recipe, the application automatically deducts the exact required quantities from the pantry.
 * **Dynamic Shopping Sync**: Missing recipe ingredients are automatically calculated and sent directly to the shopping checklist. Checked-off items are moved back into the active pantry inventory in a single click.
+* **Interactive Recipe Importing**: Paste a recipe link from any food blog/site. Pantry Pilot scrapes the details, parses the ingredients, and lets you review the proposed normalization alongside the author's original raw text helper in a staged verification view.
+* **Multi-Batch Pantry & Expiration warnings**: Allows multiple batches of the same item to be stored separately with their respective expiration dates. Grouped collapsible UI rows summarize the total stock while offering a warning dashboard alerting users of expired or expiring soon ingredients.
 
 ---
 

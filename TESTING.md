@@ -83,3 +83,54 @@ Follow these step-by-step test cases to manually verify the frontend UI componen
      * The expiration date is automatically calculated to be exactly **14 days in the future**.
   6. Click **Add Items to Pantry**.
   7. Navigate back to the **Pantry** tab and confirm `Cheddar Cheese` is now listed under the Dairy category with the correct quantity and a `Fresh` badge.
+
+---
+
+### Test Case D: Recipe Link Importing & Staged Verification Feedback Loop
+* **Objective**: Ensure that scraping an external recipe URL loads a "Verify & Normalize" staged screen inside the modal displaying raw text helpers, and final confirmation adds the custom recipe to SQLite database.
+* **Steps**:
+  1. Navigate to the **Cookbook** tab.
+  2. Click the **Import from Link** button in the header.
+  3. Paste a recipe URL (e.g., `https://www.allrecipes.com/recipe/20144/challah/`).
+  4. Click **Import Recipe**.
+  5. Verify that:
+     * The modal does *not* close, but transitions into the **Verify & Normalize Recipe** grid view.
+     * The scraped recipe name, prep time, cook time, and instructions steps are populated.
+     * Staged ingredients are listed with inputs for Name, Qty, Unit, and Category.
+     * Underneath each ingredient row, a helper message shows the original text (e.g. `Original: "2 tablespoons active dry yeast"`).
+  6. Modify any ingredients (e.g. adjust quantities or units) and click **Save to Cookbook**.
+  7. Confirm a toast notification shows success, the recipe details close, and the new recipe is visible in the recipe grid.
+  8. Click the new card and check that the recipe details match your edited values.
+  9. Click **Delete Recipe** in the footer of the details modal, confirm the dialog warning, and verify the recipe is removed from the grid.
+
+---
+
+### Test Case E: Multi-Batch Pantry Grouping & Expiration Dashboard Warnings
+* **Objective**: Verify that adding multiple batches of the same item preserves individual dates, collapses them under a single master card, and triggers the dashboard alert banner.
+* **Steps**:
+  1. Navigate to the **Pantry** tab.
+  2. Click **Add Item** to open the manual entry form. Add a mock item:
+     * Name: `Basil`
+     * Quantity: `1`
+     * Unit: `bunch`
+     * Expiration Date: Select exactly **2 days in the future** (Expiring status).
+     * Click **Add to Inventory**.
+  3. Open the form again and add the second batch:
+     * Name: `Basil`
+     * Quantity: `1`
+     * Unit: `bunch`
+     * Expiration Date: Select exactly **10 days in the future** (Fresh status).
+     * Click **Add to Inventory**.
+  4. Verify that:
+     * An orange **1 Item(s) Expiring Soon!** warning banner appears at the top of the pantry.
+     * The pantry grid contains a single `Basil` card showing **Total Qty: 2 bunch** with an `Expires in 2d` status badge.
+  5. Click the `Basil` card header. Verify it expands to show two rows:
+     * Batch 1: Expires in 2 days (orange status badge).
+     * Batch 2: Fresh (green status badge).
+  6. Click the `-` decrement button on the expiring batch to change its quantity to `0`.
+  7. Verify that:
+     * The expiring batch row disappears.
+     * The master card updates to `Total Qty: 1 bunch` with a `Fresh` status badge.
+     * The top alert warning banner disappears (since the expiring batch was used up/discarded).
+     * The parent card remains in the list representing the second (fresh) batch.
+
