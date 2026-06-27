@@ -37,9 +37,8 @@
 
   interface PantryGroup {
     name: string;
-    unit: string;
     category: string;
-    totalQty: number;
+    totalQtyLabel: string;
     statusClass: string;
     statusLabel: string;
     batches: Array<typeof pantryStore.pantryItems[0]>;
@@ -49,7 +48,10 @@
   let expandedGroups = $state<Record<string, boolean>>({});
 
   function toggleGroup(key: string) {
-    expandedGroups[key] = !expandedGroups[key];
+    expandedGroups = {
+      ...expandedGroups,
+      [key]: !expandedGroups[key]
+    };
   }
 
   function getDaysRemaining(isoString: string) {
@@ -78,13 +80,12 @@
     const groupsMap = new Map<string, PantryGroup>();
     
     for (const item of rawItems) {
-      const key = `${item.name.toLowerCase()}||${item.unit.toLowerCase()}`;
+      const key = item.name.toLowerCase().trim();
       if (!groupsMap.has(key)) {
         groupsMap.set(key, {
           name: item.name,
-          unit: item.unit,
           category: item.category,
-          totalQty: 0,
+          totalQtyLabel: '',
           statusClass: 'status-fresh',
           statusLabel: 'Fresh',
           batches: []
@@ -98,7 +99,17 @@
     const groupsList: PantryGroup[] = [];
     for (const g of groupsMap.values()) {
       g.batches.sort((a, b) => new Date(a.useByDate).getTime() - new Date(b.useByDate).getTime());
-      g.totalQty = g.batches.reduce((sum, b) => sum + b.quantity, 0);
+      
+      // Sum quantities per unit
+      const qtyByUnit: Record<string, number> = {};
+      for (const b of g.batches) {
+        qtyByUnit[b.unit] = (qtyByUnit[b.unit] || 0) + b.quantity;
+      }
+      
+      // Build visual roll-up label (e.g. "2 pack" or "1 pack + 2 pieces")
+      g.totalQtyLabel = Object.entries(qtyByUnit)
+        .map(([unit, qty]) => `${qty} ${unit}`)
+        .join(' + ');
       
       let hasExpired = false;
       let hasExpiring = false;
@@ -348,8 +359,8 @@
     <!-- Inventory List (Grouped Collapsible Batches) -->
     {#if groupedItems.length > 0}
       <div class="inventory-grid">
-        {#each groupedItems as g (`${g.name.toLowerCase()}||${g.unit.toLowerCase()}`)}
-          {@const key = `${g.name.toLowerCase()}||${g.unit.toLowerCase()}`}
+        {#each groupedItems as g (g.name.toLowerCase().trim())}
+          {@const key = g.name.toLowerCase().trim()}
           {@const isExpanded = expandedGroups[key]}
           <div class="pantry-group-card glass {isExpanded ? 'expanded' : ''}" transition:slide>
             <div class="group-header" onclick={() => toggleGroup(key)} role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && toggleGroup(key)}>
@@ -366,85 +377,87 @@
               <div class="group-header-right">
                 <span class="stock-badge {g.statusClass}">{g.statusLabel}</span>
                 <span class="total-qty-badge">
-                  {g.totalQty} {g.unit}
+                  {g.totalQtyLabel}
                 </span>
               </div>
             </div>
 
             {#if isExpanded}
               <div class="batches-section" transition:slide>
-                <div class="batches-header-row">
-                  <span>Batch Expiration</span>
-                  <span>Added On</span>
-                  <span>Quantity</span>
-                  <span class="text-center">Actions</span>
-                </div>
-                <div class="batches-list">
-                  {#each g.batches as batch (batch.id)}
-                    <div class="batch-row">
-                      <div class="batch-date-col">
-                        <span class="batch-expiry-date">{formatDate(batch.useByDate)}</span>
-                        <span class="batch-badge {getStockStatus(batch).class}">
-                          {getStockStatus(batch).label}
-                        </span>
-                      </div>
-                      
-                      <div class="batch-added-col">
-                        <span class="batch-added-date">{formatDate(batch.createdAt)}</span>
-                      </div>
-                      
-                      <div class="batch-qty-col">
-                        <div class="qty-adjuster">
+                <div class="batches-table-wrapper">
+                  <div class="batches-header-row">
+                    <span>Batch Expiration</span>
+                    <span>Added On</span>
+                    <span>Quantity</span>
+                    <span class="text-center">Actions</span>
+                  </div>
+                  <div class="batches-list">
+                    {#each g.batches as batch (batch.id)}
+                      <div class="batch-row">
+                        <div class="batch-date-col">
+                          <span class="batch-expiry-date">{formatDate(batch.useByDate)}</span>
+                          <span class="batch-badge {getStockStatus(batch).class}">
+                            {getStockStatus(batch).label}
+                          </span>
+                        </div>
+                        
+                        <div class="batch-added-col">
+                          <span class="batch-added-date">{formatDate(batch.createdAt)}</span>
+                        </div>
+                        
+                        <div class="batch-qty-col">
+                          <div class="qty-adjuster">
+                            <button 
+                              type="button"
+                              onclick={() => pantryStore.updatePantryQuantity(batch.id, batch.quantity - (batch.unit === 'g' || batch.unit === 'ml' ? 50 : 1))} 
+                              class="qty-btn"
+                              aria-label="Decrease quantity"
+                            >-</button>
+                            <input 
+                              type="number"
+                              value={batch.quantity}
+                              oninput={(e) => {
+                                const target = e.target as HTMLInputElement;
+                                if (target.value === '') return;
+                                const val = parseFloat(target.value);
+                                if (!isNaN(val) && val >= 0) {
+                                  pantryStore.updatePantryQuantity(batch.id, val);
+                                }
+                              }}
+                              onblur={(e) => {
+                                (e.target as HTMLInputElement).value = String(batch.quantity);
+                              }}
+                              class="qty-input"
+                              min="0"
+                              step="any"
+                            />
+                            <span class="qty-unit">{batch.unit}</span>
+                            <button 
+                              type="button"
+                              onclick={() => pantryStore.updatePantryQuantity(batch.id, batch.quantity + (batch.unit === 'g' || batch.unit === 'ml' ? 50 : 1))} 
+                              class="qty-btn"
+                              aria-label="Increase quantity"
+                            >+</button>
+                          </div>
+                        </div>
+                        
+                        <div class="batch-actions-col text-center">
                           <button 
                             type="button"
-                            onclick={() => pantryStore.updatePantryQuantity(batch.id, batch.quantity - (batch.unit === 'g' || batch.unit === 'ml' ? 50 : 1))} 
-                            class="qty-btn"
-                            aria-label="Decrease quantity"
-                          >-</button>
-                          <input 
-                            type="number"
-                            value={batch.quantity}
-                            oninput={(e) => {
-                              const target = e.target as HTMLInputElement;
-                              if (target.value === '') return;
-                              const val = parseFloat(target.value);
-                              if (!isNaN(val) && val >= 0) {
-                                pantryStore.updatePantryQuantity(batch.id, val);
+                            class="delete-btn" 
+                            onclick={() => {
+                              if (confirm(`Delete this batch of ${g.name}?`)) {
+                                pantryStore.deletePantryItem(batch.id);
                               }
-                            }}
-                            onblur={(e) => {
-                              (e.target as HTMLInputElement).value = String(batch.quantity);
-                            }}
-                            class="qty-input"
-                            min="0"
-                            step="any"
-                          />
-                          <span class="qty-unit">{batch.unit}</span>
-                          <button 
-                            type="button"
-                            onclick={() => pantryStore.updatePantryQuantity(batch.id, batch.quantity + (batch.unit === 'g' || batch.unit === 'ml' ? 50 : 1))} 
-                            class="qty-btn"
-                            aria-label="Increase quantity"
-                          >+</button>
+                            }} 
+                            aria-label="Delete batch"
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </div>
                       </div>
-                      
-                      <div class="batch-actions-col text-center">
-                        <button 
-                          type="button"
-                          class="delete-btn" 
-                          onclick={() => {
-                            if (confirm(`Delete this batch of ${g.name}?`)) {
-                              pantryStore.deletePantryItem(batch.id);
-                            }
-                          }} 
-                          aria-label="Delete batch"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  {/each}
+                    {/each}
+                  </div>
                 </div>
               </div>
             {/if}
@@ -661,6 +674,11 @@
     padding: 1rem 1.25rem;
     cursor: pointer;
     user-select: none;
+    transition: background-color 0.2s ease;
+  }
+
+  .group-header:hover {
+    background: rgba(255, 255, 255, 0.03);
   }
 
   .group-header-left {
@@ -674,7 +692,7 @@
     align-items: center;
     justify-content: center;
     color: var(--color-text-muted);
-    transition: transform 0.2s ease;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s;
   }
 
   .chevron-icon.open {
@@ -696,8 +714,8 @@
     color: var(--color-text-light);
     font-size: 0.8rem;
     font-weight: 700;
-    min-width: 80px;
     text-align: center;
+    white-space: nowrap;
   }
 
   /* Batches Section */
@@ -705,6 +723,11 @@
     border-top: 1px solid rgba(255, 255, 255, 0.05);
     background: rgba(0, 0, 0, 0.15);
     padding: 0.75rem 1.25rem 1rem 1.25rem;
+    overflow-x: auto;
+  }
+
+  .batches-table-wrapper {
+    min-width: 550px;
   }
 
   .batches-header-row {
