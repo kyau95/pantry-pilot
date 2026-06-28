@@ -1493,34 +1493,7 @@
     margin: 0 auto;
   }
 
-  /* Modal Styles */
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(6px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    padding: 1rem;
-    animation: fadeIn 0.25s ease-out;
-  }
-
-  .modal-content {
-    width: 100%;
-    max-width: 900px;
-    max-height: 90vh;
-    background: rgba(25, 30, 45, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    overflow: hidden;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-    animation: modalScale 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  }
+  /* Modal styles moved to global app.css */
 
   .close-btn {
     position: absolute;
