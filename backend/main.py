@@ -17,6 +17,7 @@ from db import (
     add_or_update_shopping_item,
     toggle_shopping_item,
     delete_shopping_item,
+    clear_shopping_list_db,
     update_shopping_qty,
     purchase_checked_items_db,
     get_all_recipes,
@@ -222,6 +223,14 @@ def toggle_shopping(item_id: str):
 def delete_shopping(item_id: str):
     try:
         delete_shopping_item(item_id)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/shopping")
+def clear_shopping():
+    try:
+        clear_shopping_list_db()
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

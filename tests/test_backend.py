@@ -112,6 +112,17 @@ class TestPantryPilotBackend(unittest.TestCase):
         items = db.get_all_shopping()
         self.assertEqual(len(items), 2)
 
+        # Test clear shopping list database helper
+        db.clear_shopping_list_db()
+        self.assertEqual(len(db.get_all_shopping()), 0)
+
+        # Re-add items for remaining assertions
+        db.add_or_update_shopping_item("shop-1", "Basil", 1.0, "bunch", "Vegetables")
+        db.add_or_update_shopping_item("shop-2", "Cheese", 200.0, "g", "Dairy")
+
+        items = db.get_all_shopping()
+        self.assertEqual(len(items), 2)
+
         # Test updating quantity
         db.update_shopping_qty("shop-2", 250.0)
         items = db.get_all_shopping()
@@ -347,6 +358,24 @@ class TestPantryPilotBackend(unittest.TestCase):
         )
         with urllib.request.urlopen(req_shop_del) as resp:
             self.assertEqual(json.loads(resp.read().decode('utf-8'))["status"], "success")
+
+        # Test bulk clear endpoint on live API
+        # 1. Re-add item
+        with urllib.request.urlopen(req_shop_post) as resp:
+            self.assertEqual(json.loads(resp.read().decode('utf-8'))["status"], "success")
+
+        # 2. Call bulk clear DELETE /api/shopping
+        req_bulk_del = urllib.request.Request(
+            f"{server_url}/api/shopping",
+            method="DELETE"
+        )
+        with urllib.request.urlopen(req_bulk_del) as resp:
+            self.assertEqual(json.loads(resp.read().decode('utf-8'))["status"], "success")
+
+        # 3. Verify the shopping list is now empty
+        with urllib.request.urlopen(req_get_shop) as resp:
+            shop_items = json.loads(resp.read().decode('utf-8'))
+            self.assertEqual(len(shop_items), 0)
 
 if __name__ == '__main__':
     unittest.main()

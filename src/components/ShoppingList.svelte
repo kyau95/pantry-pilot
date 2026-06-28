@@ -1,6 +1,6 @@
 <script lang="ts">
   import { pantryStore } from '../stores/pantryStore.svelte';
-  import { Plus, Trash2, CheckSquare, Square, ShoppingCart, ShoppingBag, ArrowRight } from '@lucide/svelte';
+  import { Plus, Trash2, CheckSquare, Square, ShoppingCart, ShoppingBag, ArrowRight, AlertTriangle } from '@lucide/svelte';
 
   // Manual Add Form State
   let formName = $state('');
@@ -71,6 +71,14 @@
     triggerToast(`Moved ${count} item(s) to your Pantry!`);
   }
 
+  let showClearConfirm = $state(false);
+
+  function handleClearConfirm() {
+    pantryStore.clearShoppingList();
+    showClearConfirm = false;
+    triggerToast("Shopping list cleared!");
+  }
+
   function triggerToast(msg: string) {
     toastMsg = msg;
     showToast = true;
@@ -97,10 +105,18 @@
       <p class="subtitle">Compile needed groceries manually or automatically from recipe requirements.</p>
     </div>
 
-    <button class="btn btn-cyan btn-sm" onclick={() => showAddForm = !showAddForm}>
-      <Plus size={16} />
-      <span>{showAddForm ? 'Close Form' : 'Add Item'}</span>
-    </button>
+    <div class="header-actions">
+      {#if totalCount > 0}
+        <button class="btn btn-danger btn-sm" onclick={() => showClearConfirm = true} aria-label="Clear shopping list">
+          <Trash2 size={16} />
+          <span>Clear List</span>
+        </button>
+      {/if}
+      <button class="btn btn-cyan btn-sm" onclick={() => showAddForm = !showAddForm}>
+        <Plus size={16} />
+        <span>{showAddForm ? 'Close Form' : 'Add Item'}</span>
+      </button>
+    </div>
   </div>
 
   <!-- Progress and Bulk Purchase Area -->
@@ -271,6 +287,25 @@
   {/if}
 </div>
 
+{#if showClearConfirm}
+  <div class="modal-overlay" onclick={() => showClearConfirm = false} role="presentation">
+    <div class="modal-content glass confirm-modal" onclick={(e) => e.stopPropagation()} role="presentation">
+      <div class="modal-body-form text-center p-6">
+        <div class="danger-icon-container">
+          <AlertTriangle size={36} />
+        </div>
+        <h3 class="confirm-title mt-3">Clear Shopping List</h3>
+        <p class="confirm-message mt-2">Are you sure you want to delete all <strong>{totalCount}</strong> item(s) from your shopping list? This cannot be undone.</p>
+        
+        <div class="confirm-actions mt-4">
+          <button class="btn btn-danger mr-2" onclick={handleClearConfirm}>Clear All</button>
+          <button class="btn btn-secondary" onclick={() => showClearConfirm = false}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
+
 <style>
   .shopping-container {
     max-width: 800px;
@@ -283,6 +318,12 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1.5rem;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   .header-titles h2 {

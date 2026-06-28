@@ -472,6 +472,13 @@ def delete_shopping_item(item_id):
     conn.commit()
     conn.close()
 
+def clear_shopping_list_db():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM shopping_items")
+    conn.commit()
+    conn.close()
+
 def update_shopping_qty(item_id, quantity):
     conn = get_db_connection()
     cursor = conn.cursor()

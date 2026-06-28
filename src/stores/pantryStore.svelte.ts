@@ -322,6 +322,14 @@ class PantryStore {
     this.apiCall(`/shopping/${id}`, 'DELETE');
   }
 
+  clearShoppingList() {
+    this.shoppingList = [];
+    this.saveLocal();
+
+    // Sync to SQLite in the background
+    this.apiCall('/shopping', 'DELETE');
+  }
+
   // Move checked shopping items to pantry
   purchaseCheckedItems() {
     const checkedItems = this.shoppingList.filter(i => i.checked);
