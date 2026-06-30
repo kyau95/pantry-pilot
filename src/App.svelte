@@ -228,12 +228,18 @@
   }
 
   .badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     font-size: 0.65rem;
     font-weight: 800;
     padding: 1px 5px;
+    min-width: 14px;
+    height: 14px;
     border-radius: 9999px;
     color: #fff;
     margin-left: 0.25rem;
+    line-height: 1;
   }
 
   .badge-emerald {
@@ -310,8 +316,14 @@
     position: absolute;
     top: -5px;
     right: -8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     font-size: 0.55rem;
     padding: 1px 4px;
+    min-width: 12px;
+    height: 12px;
     margin: 0;
+    line-height: 1;
   }
 </style>
