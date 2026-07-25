@@ -338,15 +338,15 @@
 {#if recipeToDelete}
   <div class="modal-overlay" onclick={() => recipeToDelete = null} role="presentation">
     <div class="modal-content glass confirm-modal" onclick={(e) => e.stopPropagation()} role="presentation">
-      <div class="modal-body-form text-center p-6">
+      <div class="modal-body-form text-center">
         <div class="danger-icon-container">
           <AlertTriangle size={36} />
         </div>
-        <h3 class="confirm-title mt-3">Delete Recipe</h3>
-        <p class="confirm-message mt-2">Are you sure you want to remove <strong>{recipeToDelete.name}</strong> from your cookbook? This cannot be undone.</p>
+        <h3 class="confirm-title">Delete Recipe</h3>
+        <p class="confirm-message">Are you sure you want to remove <strong>{recipeToDelete.name}</strong> from your cookbook? This cannot be undone.</p>
         
-        <div class="confirm-actions mt-4">
-          <button class="btn btn-danger mr-2" onclick={confirmDeleteRecipe}>Delete Recipe</button>
+        <div class="confirm-actions">
+          <button class="btn btn-danger" onclick={confirmDeleteRecipe}>Delete Recipe</button>
           <button class="btn btn-secondary" onclick={() => recipeToDelete = null}>Cancel</button>
         </div>
       </div>

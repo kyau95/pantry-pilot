@@ -300,15 +300,15 @@
 {#if itemToDelete}
   <div class="modal-overlay" onclick={() => itemToDelete = null} role="presentation">
     <div class="modal-content glass confirm-modal" onclick={(e) => e.stopPropagation()} role="presentation">
-      <div class="modal-body-form text-center p-6">
+      <div class="modal-body-form text-center">
         <div class="danger-icon-container">
           <AlertTriangle size={36} />
         </div>
-        <h3 class="confirm-title mt-3">Delete Pantry Batch</h3>
-        <p class="confirm-message mt-2">Are you sure you want to delete this batch of <strong>{itemToDelete.name}</strong> from your inventory? This cannot be undone.</p>
+        <h3 class="confirm-title">Delete Pantry Batch</h3>
+        <p class="confirm-message">Are you sure you want to delete this batch of <strong>{itemToDelete.name}</strong> from your inventory? This cannot be undone.</p>
         
-        <div class="confirm-actions mt-4">
-          <button class="btn btn-danger mr-2" onclick={confirmDeleteBatch}>Delete Batch</button>
+        <div class="confirm-actions">
+          <button class="btn btn-danger" onclick={confirmDeleteBatch}>Delete Batch</button>
           <button class="btn btn-secondary" onclick={() => itemToDelete = null}>Cancel</button>
         </div>
       </div>
@@ -319,15 +319,15 @@
 {#if showDiscardExpiredModal}
   <div class="modal-overlay" onclick={() => showDiscardExpiredModal = false} role="presentation">
     <div class="modal-content glass confirm-modal" onclick={(e) => e.stopPropagation()} role="presentation">
-      <div class="modal-body-form text-center p-6">
+      <div class="modal-body-form text-center">
         <div class="danger-icon-container">
           <AlertTriangle size={36} />
         </div>
-        <h3 class="confirm-title mt-3">Discard Expired Items</h3>
-        <p class="confirm-message mt-2">Are you sure you want to discard all <strong>{expiredCount}</strong> expired item(s) from your pantry? This cannot be undone.</p>
+        <h3 class="confirm-title">Discard Expired Items</h3>
+        <p class="confirm-message">Are you sure you want to discard all <strong>{expiredCount}</strong> expired item(s) from your pantry? This cannot be undone.</p>
         
-        <div class="confirm-actions mt-4">
-          <button class="btn btn-danger mr-2" onclick={handleConfirmDiscardExpired}>Discard Expired</button>
+        <div class="confirm-actions">
+          <button class="btn btn-danger" onclick={handleConfirmDiscardExpired}>Discard Expired</button>
           <button class="btn btn-secondary" onclick={() => showDiscardExpiredModal = false}>Cancel</button>
         </div>
       </div>

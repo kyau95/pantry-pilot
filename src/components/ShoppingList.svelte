@@ -152,15 +152,15 @@
 {#if showClearConfirm}
   <div class="modal-overlay" onclick={() => showClearConfirm = false} role="presentation">
     <div class="modal-content glass confirm-modal" onclick={(e) => e.stopPropagation()} role="presentation">
-      <div class="modal-body-form text-center p-6">
+      <div class="modal-body-form text-center">
         <div class="danger-icon-container">
           <AlertTriangle size={36} />
         </div>
-        <h3 class="confirm-title mt-3">Clear Shopping List</h3>
-        <p class="confirm-message mt-2">Are you sure you want to delete all <strong>{totalCount}</strong> item(s) from your shopping list? This cannot be undone.</p>
+        <h3 class="confirm-title">Clear Shopping List</h3>
+        <p class="confirm-message">Are you sure you want to delete all <strong>{totalCount}</strong> item(s) from your shopping list? This cannot be undone.</p>
         
-        <div class="confirm-actions mt-4">
-          <button class="btn btn-danger mr-2" onclick={handleClearConfirm}>Clear All</button>
+        <div class="confirm-actions">
+          <button class="btn btn-danger" onclick={handleClearConfirm}>Clear All</button>
           <button class="btn btn-secondary" onclick={() => showClearConfirm = false}>Cancel</button>
         </div>
       </div>
