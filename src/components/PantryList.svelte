@@ -197,7 +197,7 @@
     </div>
     
     <div class="header-actions">
-      <button class="btn btn-emerald btn-sm" onclick={() => isAddingManual = !isAddingManual}>
+      <button class="btn btn-cyan btn-sm" onclick={() => isAddingManual = !isAddingManual}>
         <Plus size={16} />
         <span>{isAddingManual ? 'Close Form' : 'Add Item'}</span>
       </button>
@@ -385,8 +385,8 @@
 
   .search-input:focus {
     outline: none;
-    border-color: var(--color-emerald);
-    box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
+    border-color: var(--color-cyan);
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.15);
   }
 
   .category-pills {
@@ -420,10 +420,10 @@
   }
 
   .pill-btn.active {
-    background: var(--color-emerald);
-    border-color: var(--color-emerald);
-    color: #fff;
-    box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+    background: rgba(6, 182, 212, 0.15);
+    border-color: var(--color-cyan);
+    color: var(--color-cyan);
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.2);
   }
 
   .inventory-grid {

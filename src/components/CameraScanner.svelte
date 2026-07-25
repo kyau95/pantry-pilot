@@ -497,8 +497,10 @@
   }
 
   .mode-btn.active {
-    background: rgba(255, 255, 255, 0.05);
-    color: #fff;
+    background: rgba(6, 182, 212, 0.15);
+    border: 1px solid var(--color-cyan);
+    color: var(--color-cyan);
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.2);
   }
 
   .hidden-canvas {
