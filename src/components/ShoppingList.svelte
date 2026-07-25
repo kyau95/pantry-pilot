@@ -195,8 +195,9 @@
   }
 
   .header-actions .btn {
-    flex: 1;
-    justify-content: center;
+    flex: initial;
+    width: auto;
+    white-space: nowrap;
   }
 
   @media (min-width: 640px) {

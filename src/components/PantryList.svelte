@@ -196,10 +196,12 @@
       <p class="subtitle">Check your current stock, track expiration dates, and update quantities.</p>
     </div>
     
-    <button class="btn btn-emerald btn-sm" onclick={() => isAddingManual = !isAddingManual}>
-      <Plus size={16} />
-      <span>{isAddingManual ? 'Close Form' : 'Add Item'}</span>
-    </button>
+    <div class="header-actions">
+      <button class="btn btn-emerald btn-sm" onclick={() => isAddingManual = !isAddingManual}>
+        <Plus size={16} />
+        <span>{isAddingManual ? 'Close Form' : 'Add Item'}</span>
+      </button>
+    </div>
   </div>
 
   <!-- Manual Add Form -->
@@ -300,6 +302,20 @@
     text-align: left;
   }
 
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .header-actions .btn {
+    flex: initial;
+    width: auto;
+    white-space: nowrap;
+  }
+
   @media (min-width: 640px) {
     .inventory-header {
       flex-direction: row;
@@ -308,6 +324,10 @@
     }
 
     .inventory-header .header-titles {
+      width: auto;
+    }
+
+    .header-actions {
       width: auto;
     }
   }
