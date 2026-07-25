@@ -70,13 +70,13 @@
 </script>
 
 <div class="pantry-group-card glass {isExpanded ? 'expanded' : ''}" transition:slide>
-  <div class="group-header" onclick={onToggle} role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && onToggle()}>
+  <div class="group-header" onclick={onToggle} role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && onToggle()} title={g.name}>
     <div class="group-header-left">
       <div class="chevron-icon {isExpanded ? 'open' : ''}">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
       </div>
       <div class="pantry-details">
-        <span class="pantry-name">{g.name}</span>
+        <span class="pantry-name" title={g.name}>{g.name}</span>
         <span class="pantry-cat">{g.category}</span>
       </div>
     </div>
@@ -191,12 +191,13 @@
 
   .group-header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     padding: 1rem 1.25rem;
     cursor: pointer;
     user-select: none;
     transition: background-color 0.2s ease;
+    gap: 0.75rem;
   }
 
   .group-header:hover {
@@ -205,7 +206,7 @@
 
   .group-header-left {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.75rem;
     flex: 1;
     min-width: 0;
@@ -217,6 +218,7 @@
     justify-content: center;
     color: var(--color-text-muted);
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s;
+    margin-top: 0.25rem;
   }
 
   .chevron-icon.open {
@@ -226,10 +228,19 @@
 
   .group-header-right {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.35rem;
     flex-shrink: 0;
     margin-left: 0.5rem;
+  }
+
+  @media (min-width: 640px) {
+    .group-header-right {
+      flex-direction: row;
+      align-items: center;
+      gap: 0.5rem;
+    }
   }
 
   .total-qty-badge {
@@ -339,9 +350,13 @@
     font-weight: 600;
     color: var(--color-text-light);
     max-width: 100%;
+    line-height: 1.35;
+    word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .pantry-cat {
