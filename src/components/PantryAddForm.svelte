@@ -30,7 +30,6 @@
     const isoDate = new Date(formUseBy).toISOString();
     onAdd(formName.trim(), formQty, formUnit, formCategory, isoDate);
 
-    // Reset Form
     formName = '';
     formQty = 1;
     formUnit = 'pieces';
@@ -40,12 +39,14 @@
 </script>
 
 <div class="modal-overlay" onclick={onClose} role="presentation">
-  <div class="modal-content glass form-modal" onclick={(e) => e.stopPropagation()} role="presentation">
-    <div class="modal-header">
-      <h3>Add Pantry Item</h3>
-      <button type="button" class="btn-close" onclick={onClose} aria-label="Close modal">
-        <X size={18} />
-      </button>
+  <div class="modal-content glass" onclick={(e) => e.stopPropagation()} role="presentation">
+    <button type="button" class="close-btn" onclick={onClose} aria-label="Close modal">
+      <X size={18} />
+    </button>
+
+    <div class="modal-title-header">
+      <h3 class="modal-h3">Add Pantry Item</h3>
+      <p class="modal-p">Stock a new batch of ingredients into your pantry inventory.</p>
     </div>
 
     <form onsubmit={handleSubmit} class="modal-body-form">
@@ -83,7 +84,7 @@
 
       <div class="form-group-row">
         <div class="form-group flex-1">
-          <label for="item-qty">Qty</label>
+          <label for="item-qty">Quantity</label>
           <input 
             type="number" 
             id="item-qty" 
@@ -105,7 +106,7 @@
         </div>
       </div>
 
-      <div class="modal-actions">
+      <div class="modal-actions mt-2">
         <button type="button" class="btn btn-secondary" onclick={onClose}>
           Cancel
         </button>
@@ -119,28 +120,10 @@
 </div>
 
 <style>
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    align-items: flex-start;
-  }
-
-  .form-group label {
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: var(--color-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .form-group-row {
-    display: flex;
-    gap: 1rem;
-    width: 100%;
-  }
-
   .flex-1 {
     flex: 1;
+  }
+  .mt-2 {
+    margin-top: 0.5rem;
   }
 </style>
