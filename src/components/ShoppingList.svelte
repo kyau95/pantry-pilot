@@ -177,15 +177,46 @@
 
   .shopping-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.85rem;
     margin-bottom: 1.5rem;
+  }
+
+  .header-titles {
+    width: 100%;
   }
 
   .header-actions {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    width: 100%;
+  }
+
+  .header-actions .btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  @media (min-width: 640px) {
+    .shopping-header {
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-titles {
+      width: auto;
+    }
+
+    .header-actions {
+      width: auto;
+    }
+
+    .header-actions .btn {
+      flex: initial;
+    }
   }
 
   .header-titles h2 {
