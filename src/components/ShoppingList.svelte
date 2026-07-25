@@ -170,7 +170,7 @@
 
 <style>
   .shopping-container {
-    max-width: 800px;
+    max-width: 1000px;
     margin: 0 auto;
     position: relative;
   }
@@ -221,7 +221,7 @@
   }
 
   .header-titles h2 {
-    font-size: 1.75rem;
+    font-size: 1.5rem;
     font-weight: 800;
     margin-bottom: 0.25rem;
     text-align: left;
@@ -243,21 +243,24 @@
   /* Empty state */
   .empty-state {
     text-align: center;
-    padding: 4.5rem 1.5rem;
+    padding: 4rem 1.5rem;
     color: var(--color-text-muted);
+    border: 1px dashed rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
   }
 
   .empty-state h3 {
     font-size: 1.15rem;
     color: var(--color-text-light);
-    margin-top: 0.75rem;
+    margin-top: 0.5rem;
     margin-bottom: 0.25rem;
   }
 
   .empty-state p {
     font-size: 0.85rem;
-    max-width: 400px;
+    max-width: 420px;
     margin: 0 auto;
+    line-height: 1.4;
   }
 
   /* Toast Notification */

@@ -285,7 +285,7 @@
 
 <style>
   .pantry-container {
-    max-width: 900px;
+    max-width: 1000px;
     margin: 0 auto;
   }
 
@@ -293,7 +293,7 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.75rem;
+    gap: 0.85rem;
     margin-bottom: 1.5rem;
   }
 

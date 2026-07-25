@@ -408,7 +408,7 @@
 
 <style>
   .scanner-container {
-    max-width: 900px;
+    max-width: 1000px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
