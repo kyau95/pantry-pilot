@@ -44,7 +44,7 @@
         <ClipboardList size={16} />
         <span>My Pantry</span>
         {#if pantryCount > 0}
-          <span class="badge badge-emerald">{pantryCount}</span>
+          <span class="badge badge-cyan">{pantryCount}</span>
         {/if}
       </button>
 
@@ -99,7 +99,7 @@
       <div class="icon-badge-wrapper">
         <ClipboardList size={20} />
         {#if pantryCount > 0}
-          <span class="mobile-badge badge-emerald">{pantryCount}</span>
+          <span class="mobile-badge badge-cyan">{pantryCount}</span>
         {/if}
       </div>
       <span>Pantry</span>
@@ -231,25 +231,23 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.65rem;
-    font-weight: 800;
-    padding: 1px 5px;
-    min-width: 14px;
-    height: 14px;
+    font-size: 0.7rem;
+    font-weight: 900;
+    padding: 0 5px;
+    min-width: 18px;
+    height: 18px;
     border-radius: 9999px;
-    color: #fff;
-    margin-left: 0.25rem;
+    color: #05141c;
+    background: var(--color-cyan);
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
+    margin-left: 0.35rem;
     line-height: 1;
-  }
-
-  .badge-emerald {
-    background: var(--color-emerald);
-    box-shadow: 0 0 8px var(--color-emerald-glow);
+    border: 1px solid rgba(255, 255, 255, 0.15);
   }
 
   .badge-cyan {
     background: var(--color-cyan);
-    box-shadow: 0 0 8px var(--color-cyan-glow);
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
   }
 
   .main-content {
@@ -315,16 +313,23 @@
 
   .mobile-badge {
     position: absolute;
-    top: -5px;
-    right: -8px;
+    top: -6px;
+    right: -10px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.55rem;
-    padding: 1px 4px;
-    min-width: 12px;
-    height: 12px;
+    font-size: 0.65rem;
+    font-weight: 900;
+    padding: 0 4px;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 9999px;
+    color: #05141c;
+    background: var(--color-cyan);
+    box-shadow: 0 0 8px rgba(6, 182, 212, 0.6);
+    border: 1.5px solid #070b16;
     margin: 0;
     line-height: 1;
+    z-index: 10;
   }
 </style>
