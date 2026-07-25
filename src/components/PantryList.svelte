@@ -300,11 +300,13 @@
 {#if itemToDelete}
   <div class="modal-overlay" onclick={() => itemToDelete = null} role="presentation">
     <div class="modal-content glass confirm-modal" onclick={(e) => e.stopPropagation()} role="presentation">
-      <div class="modal-body-form text-center">
-        <div class="danger-icon-container">
-          <AlertTriangle size={36} />
+      <div class="modal-body-form">
+        <div class="confirm-header">
+          <div class="danger-icon-container">
+            <AlertTriangle size={20} />
+          </div>
+          <h3 class="confirm-title">Delete Pantry Batch</h3>
         </div>
-        <h3 class="confirm-title">Delete Pantry Batch</h3>
         <p class="confirm-message">Are you sure you want to delete this batch of <strong>{itemToDelete.name}</strong> from your inventory? This cannot be undone.</p>
         
         <div class="confirm-actions">
@@ -319,11 +321,13 @@
 {#if showDiscardExpiredModal}
   <div class="modal-overlay" onclick={() => showDiscardExpiredModal = false} role="presentation">
     <div class="modal-content glass confirm-modal" onclick={(e) => e.stopPropagation()} role="presentation">
-      <div class="modal-body-form text-center">
-        <div class="danger-icon-container">
-          <AlertTriangle size={36} />
+      <div class="modal-body-form">
+        <div class="confirm-header">
+          <div class="danger-icon-container">
+            <AlertTriangle size={20} />
+          </div>
+          <h3 class="confirm-title">Discard Expired Items</h3>
         </div>
-        <h3 class="confirm-title">Discard Expired Items</h3>
         <p class="confirm-message">Are you sure you want to discard all <strong>{expiredCount}</strong> expired item(s) from your pantry? This cannot be undone.</p>
         
         <div class="confirm-actions">

@@ -214,59 +214,60 @@ body {
 /* Custom Confirmation Modals */
 .confirm-modal {
   max-width: 440px !important;
-  padding: 2rem 1.75rem !important;
+  padding: 1.5rem 1.5rem !important;
   border: 1px solid rgba(239, 68, 68, 0.25) !important;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 25px rgba(239, 68, 68, 0.15) !important;
   animation: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex !important;
   flex-direction: column !important;
-  align-items: center !important;
-  text-align: center !important;
+  align-items: stretch !important;
 }
 
 .confirm-modal .modal-body-form {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+}
+
+.confirm-header {
+  display: flex;
   align-items: center;
-  text-align: center;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
   width: 100%;
-}
-
-.confirm-title {
-  font-size: 1.3rem;
-  font-weight: 800;
-  color: var(--color-text-light);
-  margin-top: 1rem;
-  margin-bottom: 0.6rem;
-  text-align: center;
-  width: 100%;
-}
-
-.confirm-message {
-  font-size: 0.925rem;
-  color: var(--color-text-muted);
-  line-height: 1.55;
-  margin-top: 0;
-  margin-bottom: 1.75rem;
-  text-align: center;
-  width: 100%;
-  max-width: 360px;
-  margin-left: auto;
-  margin-right: auto;
 }
 
 .danger-icon-container {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 60px;
-  height: 60px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
   color: #ef4444;
-  margin: 0 auto;
+  margin: 0;
   flex-shrink: 0;
+}
+
+.confirm-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--color-text-light);
+  margin: 0;
+  text-align: left;
+}
+
+.confirm-message {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  text-align: left;
+  width: 100%;
 }
 
 .confirm-actions {
