@@ -6,6 +6,7 @@
   import VisualScanner from './VisualScanner.svelte';
   import BarcodeScanner from './BarcodeScanner.svelte';
   import DetectedItemsQueue from './DetectedItemsQueue.svelte';
+  import { getApiEndpoint } from '../utils/apiConfig';
 
   // State
   let stream: MediaStream | null = $state(null);
@@ -145,7 +146,7 @@
           const formData = new FormData();
           formData.append('file', blob, 'scan.jpg');
           
-          const apiRes = await fetch('http://localhost:8000/api/scan', {
+          const apiRes = await fetch(getApiEndpoint('scan'), {
             method: 'POST',
             body: formData
           });
@@ -296,7 +297,7 @@
 
   async function checkBackendConnection() {
     try {
-      const res = await fetch('http://localhost:8000/api/health');
+      const res = await fetch(getApiEndpoint('health'));
       if (res.ok) {
         const data = await res.json();
         backendConnected = true;

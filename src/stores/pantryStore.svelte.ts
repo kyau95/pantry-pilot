@@ -19,8 +19,9 @@ export interface ShoppingItem {
   checked: boolean;
   recipeName?: string;
 }
+import { getApiBaseUrl } from '../utils/apiConfig';
 
-const API_URL = 'http://localhost:8000/api';
+const API_URL = getApiBaseUrl();
 
 class PantryStore {
   pantryItems = $state<PantryItem[]>([]);

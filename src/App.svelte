@@ -269,7 +269,8 @@
     display: flex;
     justify-content: space-around;
     align-items: center;
-    height: 64px;
+    height: calc(64px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     background: rgba(7, 11, 22, 0.9);
     border-top: 1px solid rgba(255, 255, 255, 0.07);
     backdrop-filter: blur(12px);

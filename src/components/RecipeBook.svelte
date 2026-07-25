@@ -5,6 +5,7 @@
   import RecipeCard from './RecipeCard.svelte';
   import RecipeDetailsModal from './RecipeDetailsModal.svelte';
   import RecipeImportModal from './RecipeImportModal.svelte';
+  import { getApiEndpoint } from '../utils/apiConfig';
 
   // Search and filter state
   let searchQuery = $state('');
@@ -129,7 +130,7 @@
     importLoading = true;
     importError = null;
     try {
-      const res = await fetch('http://localhost:8000/api/recipes/scrape-external-link', {
+      const res = await fetch(getApiEndpoint('recipes/scrape-external-link'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url })

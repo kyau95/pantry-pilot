@@ -1,0 +1,8 @@
+{
+  "appId": "com.pantrypilot.app",
+  "appName": "Pantry Pilot",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
