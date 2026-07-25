@@ -132,31 +132,31 @@
 
   .category-chip {
     position: absolute;
-    top: 0.75rem;
-    left: 0.75rem;
-    padding: 0.2rem 0.5rem;
+    top: 0.5rem;
+    left: 0.5rem;
+    padding: 0.15rem 0.4rem;
     border-radius: 4px;
-    background: rgba(15, 23, 42, 0.75);
+    background: rgba(15, 23, 42, 0.85);
     backdrop-filter: blur(4px);
     border: 1px solid rgba(255, 255, 255, 0.08);
     color: #fff;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     font-weight: 700;
   }
 
   .matching-badge-overlay {
     position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
+    top: 0.5rem;
+    right: 0.5rem;
   }
 
   .match-badge {
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.2rem 0.5rem;
+    gap: 0.2rem;
+    padding: 0.15rem 0.4rem;
     border-radius: 4px;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     font-weight: 700;
     text-transform: uppercase;
   }
@@ -195,33 +195,45 @@
   }
 
   .card-info {
-    padding: 1rem;
+    padding: 0.75rem;
     display: flex;
     flex-direction: column;
     flex-grow: 1;
   }
 
+  @media (min-width: 640px) {
+    .card-info {
+      padding: 1rem;
+    }
+  }
+
   .card-meta {
     display: flex;
-    gap: 0.75rem;
-    margin-bottom: 0.5rem;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
     color: var(--color-text-muted);
   }
 
   .meta-item {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
-    font-size: 0.75rem;
+    gap: 0.2rem;
+    font-size: 0.7rem;
     font-weight: 500;
   }
 
   .recipe-card h3 {
-    font-size: 1.05rem;
+    font-size: 0.95rem;
     font-weight: 700;
     color: var(--color-text-light);
     margin: 0 0 0.35rem 0;
     line-height: 1.3;
+  }
+
+  @media (min-width: 640px) {
+    .recipe-card h3 {
+      font-size: 1.05rem;
+    }
   }
 
   .desc {

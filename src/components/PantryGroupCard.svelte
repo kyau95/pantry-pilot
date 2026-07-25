@@ -207,6 +207,8 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    flex: 1;
+    min-width: 0;
   }
 
   .chevron-icon {
@@ -225,7 +227,9 @@
   .group-header-right {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
+    flex-shrink: 0;
+    margin-left: 0.5rem;
   }
 
   .total-qty-badge {
@@ -238,6 +242,7 @@
     font-weight: 700;
     text-align: center;
     white-space: nowrap;
+    flex-shrink: 0;
   }
 
   /* Batches Section */
@@ -292,10 +297,13 @@
   }
 
   .batch-badge {
-    padding: 0px 4px;
+    padding: 1px 6px;
     border-radius: 3px;
     font-size: 0.6rem;
     font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+    display: inline-block;
   }
 
   .batch-added-col {
@@ -322,12 +330,18 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 0.15rem;
+    flex: 1;
+    min-width: 0;
   }
 
   .pantry-name {
     font-size: 1.05rem;
     font-weight: 600;
     color: var(--color-text-light);
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .pantry-cat {
@@ -345,6 +359,11 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.02em;
+    white-space: nowrap;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .status-fresh {

@@ -289,9 +289,27 @@
 
   .inventory-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
     margin-bottom: 1.5rem;
+  }
+
+  .inventory-header .header-titles {
+    width: 100%;
+    text-align: left;
+  }
+
+  @media (min-width: 640px) {
+    .inventory-header {
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .inventory-header .header-titles {
+      width: auto;
+    }
   }
 
   .inventory-header h2 {
