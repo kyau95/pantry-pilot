@@ -1,13 +1,14 @@
 <script lang="ts">
-  import { AlertTriangle, Clock, Filter } from '@lucide/svelte';
+  import { AlertTriangle, Clock, Trash2 } from '@lucide/svelte';
 
   interface Props {
     expiredCount: number;
     expiringSoonCount: number;
     expiryFilter: 'All' | 'Expired' | 'ExpiringSoon';
+    onDiscardExpired?: () => void;
   }
 
-  let { expiredCount, expiringSoonCount, expiryFilter = $bindable() }: Props = $props();
+  let { expiredCount, expiringSoonCount, expiryFilter = $bindable(), onDiscardExpired }: Props = $props();
 </script>
 
 <div class="expiry-dashboard-banner">
@@ -18,13 +19,25 @@
         <strong>{expiredCount} Item(s) Expired!</strong>
         <span>Spoiled stock detected. Please review and discard.</span>
       </div>
-      <button 
-        type="button" 
-        class="alert-action-btn"
-        onclick={() => expiryFilter = expiryFilter === 'Expired' ? 'All' : 'Expired'}
-      >
-        {expiryFilter === 'Expired' ? 'Show All' : 'Filter Expired'}
-      </button>
+      <div class="alert-actions">
+        <button 
+          type="button" 
+          class="alert-action-btn"
+          onclick={() => expiryFilter = expiryFilter === 'Expired' ? 'All' : 'Expired'}
+        >
+          {expiryFilter === 'Expired' ? 'Show All' : 'Filter Expired'}
+        </button>
+        {#if onDiscardExpired}
+          <button 
+            type="button" 
+            class="alert-action-btn discard-btn"
+            onclick={onDiscardExpired}
+          >
+            <Trash2 size={13} />
+            <span>Discard Expired</span>
+          </button>
+        {/if}
+      </div>
     </div>
   {/if}
 
@@ -96,7 +109,17 @@
     font-size: 0.8rem;
   }
 
+  .alert-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
   .alert-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
     padding: 0.35rem 0.75rem;
     border-radius: 6px;
     background: rgba(255, 255, 255, 0.05);
@@ -111,5 +134,17 @@
 
   .alert-action-btn:hover {
     background: rgba(255, 255, 255, 0.12);
+  }
+
+  .discard-btn {
+    background: rgba(239, 68, 68, 0.15) !important;
+    border-color: rgba(239, 68, 68, 0.35) !important;
+    color: #ef4444 !important;
+  }
+
+  .discard-btn:hover {
+    background: rgba(239, 68, 68, 0.3) !important;
+    border-color: rgba(239, 68, 68, 0.6) !important;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
   }
 </style>

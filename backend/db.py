@@ -367,6 +367,17 @@ def delete_pantry_item(item_id):
     conn.commit()
     conn.close()
 
+def delete_expired_pantry_items_db(today_iso=None):
+    if not today_iso:
+        today_iso = datetime.now().date().isoformat()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM pantry_items WHERE use_by_date < ?", (today_iso,))
+    deleted_count = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return deleted_count
+
 def cook_recipe_db(ingredients_req):
     conn = get_db_connection()
     cursor = conn.cursor()

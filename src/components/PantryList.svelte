@@ -176,18 +176,51 @@
     });
   });
 
+  let showDiscardExpiredModal = $state(false);
+  let showToast = $state(false);
+  let toastMsg = $state('');
+
   function handleAdd(name: string, qty: number, unit: string, category: string, useBy: string) {
     pantryStore.addPantryItem(name, qty, unit, category, useBy);
     isAddingManual = false;
+    triggerToast(`Added ${name} to pantry!`);
+  }
+
+  function handleConfirmDiscardExpired() {
+    const count = pantryStore.deleteExpiredPantryItems();
+    showDiscardExpiredModal = false;
+    expiryFilter = 'All';
+    if (count > 0) {
+      triggerToast(`Discarded ${count} expired item(s) from pantry!`);
+    }
+  }
+
+  function triggerToast(msg: string) {
+    toastMsg = msg;
+    showToast = true;
+    setTimeout(() => {
+      showToast = false;
+    }, 4000);
   }
 </script>
 
 <div class="pantry-container">
+  <!-- Toast feedback banner -->
+  {#if showToast}
+    <div class="alert-toast glass">
+      <div class="toast-content">
+        <AlertTriangle size={18} class="toast-icon text-cyan" />
+        <span>{toastMsg}</span>
+      </div>
+    </div>
+  {/if}
+
   <!-- Dynamic Alert Dashboard Banner -->
   <PantryDashboard 
     {expiredCount} 
     {expiringSoonCount} 
     bind:expiryFilter 
+    onDiscardExpired={() => showDiscardExpiredModal = true}
   />
 
   <div class="inventory-header">
@@ -277,6 +310,25 @@
         <div class="confirm-actions mt-4">
           <button class="btn btn-danger mr-2" onclick={confirmDeleteBatch}>Delete Batch</button>
           <button class="btn btn-secondary" onclick={() => itemToDelete = null}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
+
+{#if showDiscardExpiredModal}
+  <div class="modal-overlay" onclick={() => showDiscardExpiredModal = false} role="presentation">
+    <div class="modal-content glass confirm-modal" onclick={(e) => e.stopPropagation()} role="presentation">
+      <div class="modal-body-form text-center p-6">
+        <div class="danger-icon-container">
+          <AlertTriangle size={36} />
+        </div>
+        <h3 class="confirm-title mt-3">Discard Expired Items</h3>
+        <p class="confirm-message mt-2">Are you sure you want to discard all <strong>{expiredCount}</strong> expired item(s) from your pantry? This cannot be undone.</p>
+        
+        <div class="confirm-actions mt-4">
+          <button class="btn btn-danger mr-2" onclick={handleConfirmDiscardExpired}>Discard Expired</button>
+          <button class="btn btn-secondary" onclick={() => showDiscardExpiredModal = false}>Cancel</button>
         </div>
       </div>
     </div>

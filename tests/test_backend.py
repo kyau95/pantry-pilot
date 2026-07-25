@@ -377,5 +377,22 @@ class TestPantryPilotBackend(unittest.TestCase):
             shop_items = json.loads(resp.read().decode('utf-8'))
             self.assertEqual(len(shop_items), 0)
 
+    def test_delete_expired_pantry_items(self):
+        """
+        Validate that delete_expired_pantry_items_db removes items with a use_by_date in the past.
+        """
+        db.add_or_update_pantry_item("item-fresh", "Fresh Milk", 1, "bottle", "Dairy", "2099-01-01")
+        db.add_or_update_pantry_item("item-expired", "Spoiled Milk", 1, "bottle", "Dairy", "2000-01-01")
+
+        items_before = db.get_all_pantry()
+        self.assertEqual(len(items_before), 2)
+
+        deleted = db.delete_expired_pantry_items_db(today_iso="2026-07-25")
+        self.assertEqual(deleted, 1)
+
+        items_after = db.get_all_pantry()
+        self.assertEqual(len(items_after), 1)
+        self.assertEqual(items_after[0]["id"], "item-fresh")
+
 if __name__ == '__main__':
     unittest.main()

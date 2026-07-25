@@ -12,6 +12,7 @@ from db import (
     add_or_update_pantry_item,
     update_pantry_qty,
     delete_pantry_item,
+    delete_expired_pantry_items_db,
     cook_recipe_db,
     get_all_shopping,
     add_or_update_shopping_item,
@@ -171,6 +172,14 @@ def update_pantry(item_id: str, payload: QtyUpdatePayload):
     try:
         update_pantry_qty(item_id, payload.quantity)
         return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/pantry/expired")
+def delete_expired_pantry():
+    try:
+        deleted_count = delete_expired_pantry_items_db()
+        return {"status": "success", "deleted_count": deleted_count}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

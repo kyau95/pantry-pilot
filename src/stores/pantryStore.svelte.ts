@@ -215,6 +215,34 @@ class PantryStore {
     this.apiCall(`/pantry/${id}`, 'DELETE');
   }
 
+  deleteExpiredPantryItems(): number {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const expiredItems = this.pantryItems.filter(item => {
+      if (!item.useByDate) return false;
+      const d = new Date(item.useByDate);
+      return d < today;
+    });
+
+    const count = expiredItems.length;
+    if (count === 0) return 0;
+
+    // Filter out expired items locally
+    this.pantryItems = this.pantryItems.filter(item => {
+      if (!item.useByDate) return true;
+      const d = new Date(item.useByDate);
+      return d >= today;
+    });
+
+    this.saveLocal();
+
+    // Sync to SQLite in the background
+    this.apiCall('/pantry/expired', 'DELETE');
+
+    return count;
+  }
+
   // Cook a recipe: Deduct ingredients from pantry
   cookRecipe(recipeId: string) {
     const recipe = this.recipes.find(r => r.id === recipeId);
