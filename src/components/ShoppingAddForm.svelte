@@ -1,13 +1,14 @@
 <script lang="ts">
-  import { Plus } from '@lucide/svelte';
+  import { Plus, X } from '@lucide/svelte';
 
   interface Props {
     categories: string[];
     units: string[];
     onAdd: (name: string, quantity: number, unit: string, category: string) => void;
+    onClose: () => void;
   }
 
-  let { categories, units, onAdd }: Props = $props();
+  let { categories, units, onAdd, onClose }: Props = $props();
 
   let formName = $state('');
   let formQty = $state(1);
@@ -24,92 +25,79 @@
     formName = '';
     formQty = 1;
     formUnit = 'pieces';
+    onClose();
   }
 </script>
 
-<form onsubmit={handleSubmit} class="manual-form card glass">
-  <h3>Add Shopping Item</h3>
-  <div class="form-grid">
-    <div class="form-group">
-      <label for="shop-name">Item Name</label>
-      <input 
-        type="text" 
-        id="shop-name" 
-        placeholder="e.g., Bread, Cheese" 
-        bind:value={formName}
-        required
-        class="form-input"
-      />
+<div class="modal-overlay" onclick={onClose} role="presentation">
+  <div class="modal-content glass form-modal" onclick={(e) => e.stopPropagation()} role="presentation">
+    <div class="modal-header">
+      <h3>Add Shopping Item</h3>
+      <button type="button" class="btn-close" onclick={onClose} aria-label="Close modal">
+        <X size={18} />
+      </button>
     </div>
 
-    <div class="form-group">
-      <label for="shop-cat">Category</label>
-      <select id="shop-cat" bind:value={formCategory} class="form-select">
-        {#each categories as cat}
-          <option value={cat}>{cat}</option>
-        {/each}
-      </select>
-    </div>
-
-    <div class="form-group-row">
-      <div class="form-group flex-1">
-        <label for="shop-qty">Qty</label>
+    <form onsubmit={handleSubmit} class="modal-body-form">
+      <div class="form-group">
+        <label for="shop-name">Item Name</label>
         <input 
-          type="number" 
-          id="shop-qty" 
-          min="0.1" 
-          step="any" 
-          bind:value={formQty}
+          type="text" 
+          id="shop-name" 
+          placeholder="e.g., Bread, Cheese" 
+          bind:value={formName}
           required
           class="form-input"
         />
       </div>
-      
-      <div class="form-group flex-1">
-        <label for="shop-unit">Unit</label>
-        <select id="shop-unit" bind:value={formUnit} class="form-select">
-          {#each units as u}
-            <option value={u}>{u}</option>
+
+      <div class="form-group">
+        <label for="shop-cat">Category</label>
+        <select id="shop-cat" bind:value={formCategory} class="form-select">
+          {#each categories as cat}
+            <option value={cat}>{cat}</option>
           {/each}
         </select>
       </div>
-    </div>
-  </div>
 
-  <button type="submit" class="btn btn-cyan w-full mt-3">
-    <Plus size={16} />
-    <span>Add to List</span>
-  </button>
-</form>
+      <div class="form-group-row">
+        <div class="form-group flex-1">
+          <label for="shop-qty">Qty</label>
+          <input 
+            type="number" 
+            id="shop-qty" 
+            min="0.1" 
+            step="any" 
+            bind:value={formQty}
+            required
+            class="form-input"
+          />
+        </div>
+        
+        <div class="form-group flex-1">
+          <label for="shop-unit">Unit</label>
+          <select id="shop-unit" bind:value={formUnit} class="form-select">
+            {#each units as u}
+              <option value={u}>{u}</option>
+            {/each}
+          </select>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick={onClose}>
+          Cancel
+        </button>
+        <button type="submit" class="btn btn-cyan">
+          <Plus size={16} />
+          <span>Add to List</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <style>
-  /* Manual Form Styling */
-  .manual-form {
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-    background: rgba(30, 41, 59, 0.45);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
-  .manual-form h3 {
-    font-size: 1.125rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-    color: var(--color-text-light);
-  }
-
-  .form-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-
-  @media (min-width: 640px) {
-    .form-grid {
-      grid-template-columns: 2fr 1fr 1.5fr;
-    }
-  }
-
   .form-group {
     display: flex;
     flex-direction: column;
@@ -133,13 +121,5 @@
 
   .flex-1 {
     flex: 1;
-  }
-
-  .w-full {
-    width: 100%;
-  }
-
-  .mt-3 {
-    margin-top: 0.75rem;
   }
 </style>

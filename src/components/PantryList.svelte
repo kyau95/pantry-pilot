@@ -230,19 +230,20 @@
     </div>
     
     <div class="header-actions">
-      <button class="btn btn-cyan btn-sm" onclick={() => isAddingManual = !isAddingManual}>
+      <button class="btn btn-cyan btn-sm" onclick={() => isAddingManual = true}>
         <Plus size={16} />
-        <span>{isAddingManual ? 'Close Form' : 'Add Item'}</span>
+        <span>Add Item</span>
       </button>
     </div>
   </div>
 
-  <!-- Manual Add Form -->
+  <!-- Manual Add Form (Modal) -->
   {#if isAddingManual}
     <PantryAddForm 
       {categories} 
       {units} 
-      onAdd={handleAdd} 
+      onAdd={handleAdd}
+      onClose={() => isAddingManual = false}
     />
   {/if}
 

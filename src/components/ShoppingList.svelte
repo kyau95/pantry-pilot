@@ -102,9 +102,9 @@
           <span>Clear List</span>
         </button>
       {/if}
-      <button class="btn btn-cyan btn-sm" onclick={() => showAddForm = !showAddForm}>
+      <button class="btn btn-cyan btn-sm" onclick={() => showAddForm = true}>
         <Plus size={16} />
-        <span>{showAddForm ? 'Close Form' : 'Add Item'}</span>
+        <span>Add Item</span>
       </button>
     </div>
   </div>
@@ -118,12 +118,13 @@
     />
   {/if}
 
-  <!-- Manual Add Form (Collapsible) -->
+  <!-- Manual Add Form (Modal) -->
   {#if showAddForm}
     <ShoppingAddForm 
       {categories} 
       {units} 
       onAdd={handleAdd} 
+      onClose={() => showAddForm = false}
     />
   {/if}
 
